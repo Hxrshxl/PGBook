@@ -1,0 +1,357 @@
+module.exports = [
+"[project]/.next-internal/server/app/api/utility-bills/route/actions.js [app-rsc] (server actions loader, ecmascript)", ((__turbopack_context__, module, exports) => {
+
+}),
+"[externals]/next/dist/compiled/next-server/app-route-turbo.runtime.dev.js [external] (next/dist/compiled/next-server/app-route-turbo.runtime.dev.js, cjs)", ((__turbopack_context__, module, exports) => {
+
+const mod = __turbopack_context__.x("next/dist/compiled/next-server/app-route-turbo.runtime.dev.js", () => require("next/dist/compiled/next-server/app-route-turbo.runtime.dev.js"));
+
+module.exports = mod;
+}),
+"[externals]/next/dist/compiled/@opentelemetry/api [external] (next/dist/compiled/@opentelemetry/api, cjs)", ((__turbopack_context__, module, exports) => {
+
+const mod = __turbopack_context__.x("next/dist/compiled/@opentelemetry/api", () => require("next/dist/compiled/@opentelemetry/api"));
+
+module.exports = mod;
+}),
+"[externals]/next/dist/compiled/next-server/app-page-turbo.runtime.dev.js [external] (next/dist/compiled/next-server/app-page-turbo.runtime.dev.js, cjs)", ((__turbopack_context__, module, exports) => {
+
+const mod = __turbopack_context__.x("next/dist/compiled/next-server/app-page-turbo.runtime.dev.js", () => require("next/dist/compiled/next-server/app-page-turbo.runtime.dev.js"));
+
+module.exports = mod;
+}),
+"[externals]/next/dist/server/app-render/work-unit-async-storage.external.js [external] (next/dist/server/app-render/work-unit-async-storage.external.js, cjs)", ((__turbopack_context__, module, exports) => {
+
+const mod = __turbopack_context__.x("next/dist/server/app-render/work-unit-async-storage.external.js", () => require("next/dist/server/app-render/work-unit-async-storage.external.js"));
+
+module.exports = mod;
+}),
+"[externals]/next/dist/server/app-render/work-async-storage.external.js [external] (next/dist/server/app-render/work-async-storage.external.js, cjs)", ((__turbopack_context__, module, exports) => {
+
+const mod = __turbopack_context__.x("next/dist/server/app-render/work-async-storage.external.js", () => require("next/dist/server/app-render/work-async-storage.external.js"));
+
+module.exports = mod;
+}),
+"[externals]/next/dist/shared/lib/no-fallback-error.external.js [external] (next/dist/shared/lib/no-fallback-error.external.js, cjs)", ((__turbopack_context__, module, exports) => {
+
+const mod = __turbopack_context__.x("next/dist/shared/lib/no-fallback-error.external.js", () => require("next/dist/shared/lib/no-fallback-error.external.js"));
+
+module.exports = mod;
+}),
+"[externals]/next/dist/server/app-render/after-task-async-storage.external.js [external] (next/dist/server/app-render/after-task-async-storage.external.js, cjs)", ((__turbopack_context__, module, exports) => {
+
+const mod = __turbopack_context__.x("next/dist/server/app-render/after-task-async-storage.external.js", () => require("next/dist/server/app-render/after-task-async-storage.external.js"));
+
+module.exports = mod;
+}),
+"[externals]/next/dist/server/app-render/action-async-storage.external.js [external] (next/dist/server/app-render/action-async-storage.external.js, cjs)", ((__turbopack_context__, module, exports) => {
+
+const mod = __turbopack_context__.x("next/dist/server/app-render/action-async-storage.external.js", () => require("next/dist/server/app-render/action-async-storage.external.js"));
+
+module.exports = mod;
+}),
+"[externals]/mongoose [external] (mongoose, cjs)", ((__turbopack_context__, module, exports) => {
+
+const mod = __turbopack_context__.x("mongoose", () => require("mongoose"));
+
+module.exports = mod;
+}),
+"[project]/src/lib/db.js [app-route] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
+
+__turbopack_context__.s([
+    "default",
+    ()=>dbConnect
+]);
+var __TURBOPACK__imported__module__$5b$externals$5d2f$mongoose__$5b$external$5d$__$28$mongoose$2c$__cjs$29$__ = __turbopack_context__.i("[externals]/mongoose [external] (mongoose, cjs)");
+;
+let cached = /*TURBOPACK member replacement*/ __turbopack_context__.g._mongoose ?? {
+    conn: null,
+    promise: null
+};
+/*TURBOPACK member replacement*/ __turbopack_context__.g._mongoose = cached;
+async function dbConnect() {
+    const URI = process.env.MONGODB_URI;
+    if (!URI) throw new Error('MONGODB_URI is not set in .env.local');
+    if (cached.conn) return cached.conn;
+    if (!cached.promise) {
+        cached.promise = __TURBOPACK__imported__module__$5b$externals$5d2f$mongoose__$5b$external$5d$__$28$mongoose$2c$__cjs$29$__["default"].connect(URI, {
+            bufferCommands: false
+        }).then((m)=>m);
+    }
+    cached.conn = await cached.promise;
+    return cached.conn;
+}
+}),
+"[project]/src/lib/models/UtilityBill.js [app-route] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
+
+__turbopack_context__.s([
+    "default",
+    ()=>__TURBOPACK__default__export__
+]);
+var __TURBOPACK__imported__module__$5b$externals$5d2f$mongoose__$5b$external$5d$__$28$mongoose$2c$__cjs$29$__ = __turbopack_context__.i("[externals]/mongoose [external] (mongoose, cjs)");
+;
+const utilityBillSchema = new __TURBOPACK__imported__module__$5b$externals$5d2f$mongoose__$5b$external$5d$__$28$mongoose$2c$__cjs$29$__["default"].Schema({
+    userId: {
+        type: __TURBOPACK__imported__module__$5b$externals$5d2f$mongoose__$5b$external$5d$__$28$mongoose$2c$__cjs$29$__["default"].Schema.Types.ObjectId,
+        required: true,
+        ref: 'User',
+        index: true
+    },
+    month: {
+        type: String,
+        required: true
+    },
+    type: {
+        type: String,
+        enum: [
+            'electricity',
+            'water',
+            'maintenance',
+            'internet',
+            'other'
+        ],
+        default: 'electricity'
+    },
+    totalAmount: {
+        type: Number,
+        required: true
+    },
+    perTenantAmount: {
+        type: Number,
+        required: true
+    },
+    tenantCount: {
+        type: Number,
+        required: true
+    },
+    splitMethod: {
+        type: String,
+        default: 'equal'
+    }
+}, {
+    timestamps: true
+});
+utilityBillSchema.set('toJSON', {
+    transform: (_, ret)=>{
+        ret.id = ret._id.toString();
+        delete ret._id;
+        delete ret.__v;
+        delete ret.userId;
+        return ret;
+    }
+});
+const __TURBOPACK__default__export__ = __TURBOPACK__imported__module__$5b$externals$5d2f$mongoose__$5b$external$5d$__$28$mongoose$2c$__cjs$29$__["default"].models.UtilityBill ?? __TURBOPACK__imported__module__$5b$externals$5d2f$mongoose__$5b$external$5d$__$28$mongoose$2c$__cjs$29$__["default"].model('UtilityBill', utilityBillSchema);
+}),
+"[project]/src/lib/models/Payment.js [app-route] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
+
+__turbopack_context__.s([
+    "default",
+    ()=>__TURBOPACK__default__export__
+]);
+var __TURBOPACK__imported__module__$5b$externals$5d2f$mongoose__$5b$external$5d$__$28$mongoose$2c$__cjs$29$__ = __turbopack_context__.i("[externals]/mongoose [external] (mongoose, cjs)");
+;
+const paymentSchema = new __TURBOPACK__imported__module__$5b$externals$5d2f$mongoose__$5b$external$5d$__$28$mongoose$2c$__cjs$29$__["default"].Schema({
+    userId: {
+        type: __TURBOPACK__imported__module__$5b$externals$5d2f$mongoose__$5b$external$5d$__$28$mongoose$2c$__cjs$29$__["default"].Schema.Types.ObjectId,
+        required: true,
+        ref: 'User',
+        index: true
+    },
+    tenantId: {
+        type: __TURBOPACK__imported__module__$5b$externals$5d2f$mongoose__$5b$external$5d$__$28$mongoose$2c$__cjs$29$__["default"].Schema.Types.ObjectId,
+        required: true,
+        ref: 'Tenant'
+    },
+    month: {
+        type: String,
+        required: true
+    },
+    rentAmount: {
+        type: Number,
+        default: 0
+    },
+    utilityShare: {
+        type: Number,
+        default: 0
+    },
+    amountPaid: {
+        type: Number,
+        default: 0
+    },
+    status: {
+        type: String,
+        enum: [
+            'paid',
+            'partial',
+            'pending'
+        ],
+        default: 'pending'
+    },
+    paidDate: {
+        type: String,
+        default: null
+    },
+    notes: {
+        type: String,
+        default: ''
+    }
+}, {
+    timestamps: true
+});
+paymentSchema.index({
+    userId: 1,
+    month: 1
+});
+paymentSchema.index({
+    userId: 1,
+    tenantId: 1
+});
+paymentSchema.set('toJSON', {
+    transform: (_, ret)=>{
+        ret.id = ret._id.toString();
+        ret.tenantId = ret.tenantId?.toString();
+        delete ret._id;
+        delete ret.__v;
+        delete ret.userId;
+        return ret;
+    }
+});
+const __TURBOPACK__default__export__ = __TURBOPACK__imported__module__$5b$externals$5d2f$mongoose__$5b$external$5d$__$28$mongoose$2c$__cjs$29$__["default"].models.Payment ?? __TURBOPACK__imported__module__$5b$externals$5d2f$mongoose__$5b$external$5d$__$28$mongoose$2c$__cjs$29$__["default"].model('Payment', paymentSchema);
+}),
+"[externals]/buffer [external] (buffer, cjs)", ((__turbopack_context__, module, exports) => {
+
+const mod = __turbopack_context__.x("buffer", () => require("buffer"));
+
+module.exports = mod;
+}),
+"[externals]/stream [external] (stream, cjs)", ((__turbopack_context__, module, exports) => {
+
+const mod = __turbopack_context__.x("stream", () => require("stream"));
+
+module.exports = mod;
+}),
+"[externals]/util [external] (util, cjs)", ((__turbopack_context__, module, exports) => {
+
+const mod = __turbopack_context__.x("util", () => require("util"));
+
+module.exports = mod;
+}),
+"[externals]/crypto [external] (crypto, cjs)", ((__turbopack_context__, module, exports) => {
+
+const mod = __turbopack_context__.x("crypto", () => require("crypto"));
+
+module.exports = mod;
+}),
+"[project]/src/lib/auth.js [app-route] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
+
+__turbopack_context__.s([
+    "getUserFromRequest",
+    ()=>getUserFromRequest,
+    "signToken",
+    ()=>signToken,
+    "verifyToken",
+    ()=>verifyToken
+]);
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$jsonwebtoken$2f$index$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/jsonwebtoken/index.js [app-route] (ecmascript)");
+;
+const SECRET = process.env.JWT_SECRET || 'dev_fallback_secret';
+function signToken(payload) {
+    return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$jsonwebtoken$2f$index$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["default"].sign(payload, SECRET, {
+        expiresIn: '30d'
+    });
+}
+function verifyToken(token) {
+    try {
+        return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$jsonwebtoken$2f$index$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["default"].verify(token, SECRET);
+    } catch  {
+        return null;
+    }
+}
+function getUserFromRequest(request) {
+    const auth = request.headers.get('authorization') ?? '';
+    if (!auth.startsWith('Bearer ')) return null;
+    return verifyToken(auth.slice(7));
+}
+}),
+"[project]/src/app/api/utility-bills/route.js [app-route] (ecmascript)", ((__turbopack_context__) => {
+"use strict";
+
+__turbopack_context__.s([
+    "GET",
+    ()=>GET,
+    "POST",
+    ()=>POST
+]);
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/server.js [app-route] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/lib/db.js [app-route] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$models$2f$UtilityBill$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/lib/models/UtilityBill.js [app-route] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$models$2f$Payment$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/lib/models/Payment.js [app-route] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$auth$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/lib/auth.js [app-route] (ecmascript)");
+;
+;
+;
+;
+;
+function calcStatus(paid, total) {
+    if (paid >= total) return 'paid';
+    if (paid > 0) return 'partial';
+    return 'pending';
+}
+async function GET(request) {
+    await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["default"])();
+    const auth = (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$auth$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["getUserFromRequest"])(request);
+    if (!auth) return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+        message: 'Unauthorized'
+    }, {
+        status: 401
+    });
+    const bills = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$models$2f$UtilityBill$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["default"].find({
+        userId: auth.id
+    }).sort({
+        createdAt: -1
+    });
+    return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json(bills);
+}
+async function POST(request) {
+    await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$db$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["default"])();
+    const auth = (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$auth$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["getUserFromRequest"])(request);
+    if (!auth) return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+        message: 'Unauthorized'
+    }, {
+        status: 401
+    });
+    const body = await request.json();
+    const bill = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$models$2f$UtilityBill$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["default"].create({
+        ...body,
+        userId: auth.id
+    });
+    // Update all payments for this month — add perTenantAmount to utilityShare
+    const payments = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$models$2f$Payment$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["default"].find({
+        userId: auth.id,
+        month: bill.month
+    });
+    const updatedPayments = await Promise.all(payments.map(async (p)=>{
+        const newShare = (p.utilityShare ?? 0) + bill.perTenantAmount;
+        const newStatus = calcStatus(p.amountPaid ?? 0, (p.rentAmount ?? 0) + newShare);
+        return __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$models$2f$Payment$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["default"].findByIdAndUpdate(p._id, {
+            utilityShare: newShare,
+            status: newStatus
+        }, {
+            new: true
+        });
+    }));
+    return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+        bill,
+        updatedPayments
+    }, {
+        status: 201
+    });
+}
+}),
+];
+
+//# sourceMappingURL=%5Broot-of-the-server%5D__0f8f8970._.js.map
