@@ -1,28 +1,25 @@
-import { NextResponse } from 'next/server'
-import dbConnect from '@/lib/db'
-import User from '@/lib/models/User'
-import { getUserFromRequest } from '@/lib/auth'
+import { route, readJson, json, pick } from '@/lib/api'
 
-export async function GET(request) {
-  await dbConnect()
-  const auth = getUserFromRequest(request)
-  if (!auth) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+const SETTINGS_FIELDS = ['pgName', 'address', 'ownerName', 'phone', 'upiId', 'logoText', 'totalBeds', 'rentDueDay']
 
-  const user = await User.findById(auth.id).select('pgSettings pgName')
-  if (!user) return NextResponse.json({ message: 'User not found' }, { status: 404 })
-  return NextResponse.json(user.pgSettings ?? {})
-}
+export const GET = route(async ({ user }) => json(user.pgSettings ?? {}), { permission: 'settings.view' })
 
-export async function PUT(request) {
-  await dbConnect()
-  const auth = getUserFromRequest(request)
-  if (!auth) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+// Partial update: only the fields sent are changed.
+export const PUT = route(async ({ request, user, audit }) => {
+  const body = await readJson(request)
+  const before = user.pgSettings?.toObject?.() ?? {}
+  for (const [key, value] of Object.entries(pick(body, SETTINGS_FIELDS))) {
+    user.set(`pgSettings.${key}`, value)
+  }
+  await user.save()
 
-  const body = await request.json()
-  const user = await User.findByIdAndUpdate(
-    auth.id,
-    { pgSettings: body, ...(body.pgName ? { pgName: body.pgName } : {}) },
-    { new: true }
-  )
-  return NextResponse.json(user.pgSettings)
-}
+  const after = user.pgSettings.toObject()
+  const fields = SETTINGS_FIELDS.filter(k => before[k] !== after[k])
+  if (fields.length) await audit('settings.update', { target: { kind: 'settings', label: 'PG settings' }, details: { fields } })
+  // The UPI ID is where tenants send rent — changing it is the classic account-takeover fraud,
+  // so it gets its own security event (shown to the owner and to PGBook Trust & Safety).
+  if (fields.includes('upiId')) {
+    await audit('settings.payout_upi_changed', { target: { kind: 'settings', label: 'Payout UPI ID' }, details: { from: before.upiId ?? '', to: after.upiId } })
+  }
+  return json(user.pgSettings)
+}, { permission: 'settings.manage' })

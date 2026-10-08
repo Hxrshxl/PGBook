@@ -20,7 +20,9 @@ export default function LoginPage() {
     setLoading(true)
     try {
       await login(email, password)
-      router.push('/dashboard')
+      // Only follow internal dashboard links, never arbitrary URLs (open redirect).
+      const next = new URLSearchParams(window.location.search).get('next')
+      router.replace(next && next.startsWith('/dashboard') ? next : '/dashboard')
     } catch (err) {
       setError(err.message ?? 'Login failed. Try signing up first.')
       setLoading(false)

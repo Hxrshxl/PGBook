@@ -53,7 +53,7 @@ export default function Navbar() {
           )}
         </div>
 
-        <button onClick={() => setOpen(!open)} className="md:hidden text-slate-400 hover:text-white">
+        <button onClick={() => setOpen(!open)} aria-label={open ? 'Close menu' : 'Open menu'} aria-expanded={open} className="md:hidden text-slate-400 hover:text-white">
           {open ? <X size={22} /> : <Menu size={22} />}
         </button>
       </div>
@@ -68,9 +68,14 @@ export default function Navbar() {
               Go to Dashboard →
             </Link>
           ) : (
-            <Link href="/signup" onClick={() => setOpen(false)} className="block w-full text-center bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors mt-2">
-              Start free trial
-            </Link>
+            <>
+              <Link href="/login" onClick={() => setOpen(false)} className="block text-slate-300 hover:text-white text-sm font-medium py-2">
+                Sign in
+              </Link>
+              <Link href="/signup" onClick={() => setOpen(false)} className="block w-full text-center bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors mt-2">
+                Start free trial
+              </Link>
+            </>
           )}
         </div>
       )}

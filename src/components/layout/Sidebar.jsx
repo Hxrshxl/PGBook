@@ -1,10 +1,10 @@
 'use client'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import {
   Building2, LayoutDashboard, Users, IndianRupee, Zap,
   FileText, Bell, MessageSquare, BarChart3, History,
-  Settings, LogOut, X,
+  Settings, LogOut, X, ScrollText,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 
@@ -18,16 +18,16 @@ const navItems = [
   { label: 'Complaints',       icon: MessageSquare,   path: '/dashboard/complaints'                },
   { label: 'Analytics',        icon: BarChart3,       path: '/dashboard/analytics'                 },
   { label: 'Tenant History',   icon: History,         path: '/dashboard/history'                   },
+  { label: 'Activity',         icon: ScrollText,      path: '/dashboard/activity'                  },
 ]
 
 export default function Sidebar({ onClose }) {
   const pathname = usePathname()
-  const router = useRouter()
   const { user, logout } = useAuth()
 
-  function handleLogout() {
-    logout()
-    router.push('/')
+  async function handleLogout() {
+    await logout()
+    window.location.assign('/') // full reload clears all in-memory data
   }
 
   function linkCls(path, exact) {

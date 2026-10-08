@@ -1,14 +1,19 @@
 'use client'
-import { createContext, useContext, useReducer, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useReducer, useState } from 'react'
 import { api } from '@/utils/api'
 import { useAuth } from './AuthContext'
-import { calcPaymentStatus, getCurrentMonth } from '@/utils/helpers'
 
 const AppContext = createContext(null)
 
 const defaultState = {
   tenants: [], payments: [], utilityBills: [], complaints: [],
-  pgSettings: { pgName: '', address: '', ownerName: '', phone: '', upiId: '', logoText: 'PGBook' },
+  pgSettings: { pgName: '', address: '', ownerName: '', phone: '', upiId: '', logoText: '', totalBeds: 0, rentDueDay: 5 },
+}
+
+function upsert(list, items) {
+  const byId = new Map(list.map(x => [x.id, x]))
+  for (const item of items) byId.set(item.id, item)
+  return [...byId.values()]
 }
 
 function reducer(state, action) {
@@ -17,32 +22,28 @@ function reducer(state, action) {
       return { ...state, ...action.payload }
     case 'RESET':
       return defaultState
-    case 'TENANT_ADD':
-      return { ...state, tenants: [...state.tenants, action.payload] }
-    case 'TENANT_UPDATE':
-      return { ...state, tenants: state.tenants.map(t => t.id === action.payload.id ? action.payload : t) }
-    case 'TENANT_VACATE':
-      return { ...state, tenants: state.tenants.map(t => t.id === action.payload.id ? action.payload : t) }
-    case 'PAYMENT_ADD':
-      return { ...state, payments: [...state.payments, action.payload] }
-    case 'PAYMENT_UPDATE':
-      return { ...state, payments: state.payments.map(p => p.id === action.payload.id ? { ...p, ...action.payload } : p) }
-    case 'UTILITY_ADD': {
-      const { bill, updatedPayments } = action.payload
-      const updatedIds = new Set(updatedPayments.map(p => p.id))
+    case 'TENANTS_UPSERT':
+      return { ...state, tenants: upsert(state.tenants, action.payload) }
+    case 'TENANT_REMOVE':
       return {
         ...state,
-        utilityBills: [...state.utilityBills, bill],
-        payments: state.payments.map(p => updatedIds.has(p.id) ? updatedPayments.find(u => u.id === p.id) : p),
+        tenants: state.tenants.filter(t => t.id !== action.payload),
+        payments: state.payments.filter(p => p.tenantId !== action.payload),
+        complaints: state.complaints.filter(c => c.tenantId !== action.payload),
       }
-    }
-    case 'UTILITY_DELETE':
+    case 'PAYMENTS_UPSERT':
+      return { ...state, payments: upsert(state.payments, action.payload) }
+    case 'PAYMENT_REMOVE':
+      return { ...state, payments: state.payments.filter(p => p.id !== action.payload) }
+    case 'BILLS_UPSERT':
+      return { ...state, utilityBills: upsert(state.utilityBills, action.payload) }
+    case 'BILL_REMOVE':
       return { ...state, utilityBills: state.utilityBills.filter(b => b.id !== action.payload) }
-    case 'COMPLAINT_ADD':
-      return { ...state, complaints: [...state.complaints, action.payload] }
-    case 'COMPLAINT_UPDATE':
-      return { ...state, complaints: state.complaints.map(c => c.id === action.payload.id ? action.payload : c) }
-    case 'SETTINGS_UPDATE':
+    case 'COMPLAINTS_UPSERT':
+      return { ...state, complaints: upsert(state.complaints, action.payload) }
+    case 'COMPLAINT_REMOVE':
+      return { ...state, complaints: state.complaints.filter(c => c.id !== action.payload) }
+    case 'SETTINGS_SET':
       return { ...state, pgSettings: { ...state.pgSettings, ...action.payload } }
     default:
       return state
@@ -50,111 +51,151 @@ function reducer(state, action) {
 }
 
 export function AppProvider({ children }) {
-  const { user } = useAuth()
+  const { user, updateUser } = useAuth()
   const [state, dispatch] = useReducer(reducer, defaultState)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const userId = user?.id
+
+  const reload = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const [tenants, payments, utilityBills, complaints, pgSettings] = await Promise.all([
+        api.get('/tenants'),
+        api.get('/payments'),
+        api.get('/utility-bills'),
+        api.get('/complaints'),
+        api.get('/settings'),
+      ])
+      dispatch({ type: 'LOAD', payload: { tenants, payments, utilityBills, complaints, pgSettings: { ...defaultState.pgSettings, ...pgSettings } } })
+    } catch (e) {
+      setError(e.message ?? 'Could not load your data.')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
-    if (!user) { dispatch({ type: 'RESET' }); setLoading(false); return }
-    let cancelled = false
-    async function fetchAll() {
-      setLoading(true)
-      try {
-        const [tenants, payments, utilityBills, complaints, pgSettings] = await Promise.all([
-          api.get('/tenants'),
-          api.get('/payments'),
-          api.get('/utility-bills'),
-          api.get('/complaints'),
-          api.get('/settings'),
-        ])
-        if (!cancelled) dispatch({ type: 'LOAD', payload: { tenants, payments, utilityBills, complaints, pgSettings } })
-      } catch (e) {
-        console.error('Failed to load app data:', e)
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-    fetchAll()
-    return () => { cancelled = true }
-  }, [user])
+    if (!userId) { dispatch({ type: 'RESET' }); return }
+    reload()
+  }, [userId, reload])
 
-  // ── Tenant actions ──────────────────────────────────────────
+  // ── Tenants ─────────────────────────────────────────────────
   async function addTenant(formData) {
-    const tenant = await api.post('/tenants', formData)
-    dispatch({ type: 'TENANT_ADD', payload: tenant })
-    const payment = await api.post('/payments', {
-      tenantId: tenant.id, month: getCurrentMonth(),
-      rentAmount: tenant.rentAmount, utilityShare: 0,
-      amountPaid: 0, status: 'pending', paidDate: null, notes: '',
-    })
-    dispatch({ type: 'PAYMENT_ADD', payload: payment })
+    const { tenant, payment } = await api.post('/tenants', formData)
+    dispatch({ type: 'TENANTS_UPSERT', payload: [tenant] })
+    if (payment) dispatch({ type: 'PAYMENTS_UPSERT', payload: [payment] })
     return tenant
   }
 
   async function updateTenant(id, formData) {
-    const tenant = await api.put(`/tenants/${id}`, formData)
-    dispatch({ type: 'TENANT_UPDATE', payload: tenant })
+    const { tenant, payments } = await api.put(`/tenants/${id}`, formData)
+    dispatch({ type: 'TENANTS_UPSERT', payload: [tenant] })
+    if (payments.length) dispatch({ type: 'PAYMENTS_UPSERT', payload: payments })
     return tenant
   }
 
-  async function vacateTenant(id) {
-    const tenant = await api.patch(`/tenants/${id}`)
-    dispatch({ type: 'TENANT_VACATE', payload: tenant })
+  async function vacateTenant(id, moveOutDate) {
+    const tenant = await api.patch(`/tenants/${id}`, { status: 'vacated', moveOutDate })
+    dispatch({ type: 'TENANTS_UPSERT', payload: [tenant] })
     return tenant
   }
 
-  // ── Payment actions ─────────────────────────────────────────
-  async function addPayment(data) {
-    const payment = await api.post('/payments', data)
-    dispatch({ type: 'PAYMENT_ADD', payload: payment })
+  async function reactivateTenant(id) {
+    const tenant = await api.patch(`/tenants/${id}`, { status: 'active' })
+    dispatch({ type: 'TENANTS_UPSERT', payload: [tenant] })
+    return tenant
+  }
+
+  async function deleteTenant(id) {
+    await api.delete(`/tenants/${id}`)
+    dispatch({ type: 'TENANT_REMOVE', payload: id })
+  }
+
+  // ── Dues & payments ─────────────────────────────────────────
+  async function createDue(tenantId, month) {
+    const payment = await api.post('/payments', { tenantId, month })
+    dispatch({ type: 'PAYMENTS_UPSERT', payload: [payment] })
     return payment
   }
 
-  async function updatePayment(id, data) {
+  async function generateDues(month) {
+    const { payments } = await api.post('/payments/generate', { month })
+    dispatch({ type: 'PAYMENTS_UPSERT', payload: payments })
+    return payments
+  }
+
+  async function updateDue(id, data) {
     const payment = await api.put(`/payments/${id}`, data)
-    dispatch({ type: 'PAYMENT_UPDATE', payload: payment })
+    dispatch({ type: 'PAYMENTS_UPSERT', payload: [payment] })
     return payment
   }
 
-  // ── Utility bill actions ────────────────────────────────────
+  async function deleteDue(id) {
+    await api.delete(`/payments/${id}`)
+    dispatch({ type: 'PAYMENT_REMOVE', payload: id })
+  }
+
+  async function recordPayment(paymentId, entry) {
+    const payment = await api.post(`/payments/${paymentId}/transactions`, entry)
+    dispatch({ type: 'PAYMENTS_UPSERT', payload: [payment] })
+    return payment
+  }
+
+  async function deletePaymentEntry(paymentId, txId) {
+    const payment = await api.delete(`/payments/${paymentId}/transactions/${txId}`)
+    dispatch({ type: 'PAYMENTS_UPSERT', payload: [payment] })
+    return payment
+  }
+
+  // ── Utility bills ───────────────────────────────────────────
   async function addUtilityBill(data) {
-    const result = await api.post('/utility-bills', data)
-    dispatch({ type: 'UTILITY_ADD', payload: result })
-    return result.bill
+    const { bill, payments } = await api.post('/utility-bills', data)
+    dispatch({ type: 'BILLS_UPSERT', payload: [bill] })
+    dispatch({ type: 'PAYMENTS_UPSERT', payload: payments })
+    return bill
   }
 
   async function deleteUtilityBill(id) {
-    await api.delete(`/utility-bills/${id}`)
-    dispatch({ type: 'UTILITY_DELETE', payload: id })
+    const { payments } = await api.delete(`/utility-bills/${id}`)
+    dispatch({ type: 'BILL_REMOVE', payload: id })
+    dispatch({ type: 'PAYMENTS_UPSERT', payload: payments })
   }
 
-  // ── Complaint actions ───────────────────────────────────────
+  // ── Complaints ──────────────────────────────────────────────
   async function addComplaint(data) {
     const complaint = await api.post('/complaints', data)
-    dispatch({ type: 'COMPLAINT_ADD', payload: complaint })
+    dispatch({ type: 'COMPLAINTS_UPSERT', payload: [complaint] })
     return complaint
   }
 
-  async function updateComplaintStatus(id, status, ownerNotes) {
-    const complaint = await api.patch(`/complaints/${id}`, { status, ownerNotes })
-    dispatch({ type: 'COMPLAINT_UPDATE', payload: complaint })
+  async function updateComplaint(id, updates) {
+    const complaint = await api.patch(`/complaints/${id}`, updates)
+    dispatch({ type: 'COMPLAINTS_UPSERT', payload: [complaint] })
     return complaint
+  }
+
+  async function deleteComplaint(id) {
+    await api.delete(`/complaints/${id}`)
+    dispatch({ type: 'COMPLAINT_REMOVE', payload: id })
   }
 
   // ── Settings ────────────────────────────────────────────────
   async function updateSettings(data) {
-    const settings = await api.put('/settings', data)
-    dispatch({ type: 'SETTINGS_UPDATE', payload: settings })
-    return settings
+    const pgSettings = await api.put('/settings', data)
+    dispatch({ type: 'SETTINGS_SET', payload: pgSettings })
+    updateUser({ pgSettings })
+    return pgSettings
   }
 
   return (
     <AppContext.Provider value={{
-      ...state, loading,
-      addTenant, updateTenant, vacateTenant,
-      addPayment, updatePayment,
+      ...state, loading, error, reload,
+      addTenant, updateTenant, vacateTenant, reactivateTenant, deleteTenant,
+      createDue, generateDues, updateDue, deleteDue, recordPayment, deletePaymentEntry,
       addUtilityBill, deleteUtilityBill,
-      addComplaint, updateComplaintStatus,
+      addComplaint, updateComplaint, deleteComplaint,
       updateSettings,
     }}>
       {children}
