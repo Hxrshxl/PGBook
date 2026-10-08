@@ -2,14 +2,18 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useAppData } from '@/context/AppContext'
-import { formatCurrencyRounded, formatMonth, getMonthRange, getCurrentMonth } from '@/utils/helpers'
+import { useAuth } from '@/context/AuthContext'
+import { formatCurrencyRounded, formatMonth, getMonthRange, getCurrentMonth, receivedInMonth, roundMoney } from '@/utils/helpers'
 import { getMonthlyRevenue, getCollectionRate, getOccupancyRate, getOutstandingDues, getAvgMonthlyRevenue } from '@/utils/analyticsHelpers'
 import BarChart from '@/components/analytics/BarChart'
 
 const RANGES = [6, 12]
 
 export default function AnalyticsPage() {
-  const { tenants, payments, pgSettings } = useAppData()
+  const { tenants, payments, expenses, rooms, pgSettings } = useAppData()
+  const { can } = useAuth()
+  const showProfit = can('expenses.view')
+  const totalBeds = rooms.length ? rooms.reduce((s, r) => s + r.capacity, 0) : pgSettings.totalBeds
   const [range, setRange] = useState(6)
   const currentMonth = getCurrentMonth()
   const months = getMonthRange(range)
@@ -18,9 +22,18 @@ export default function AnalyticsPage() {
   const vacated = tenants.filter(t => t.status === 'vacated')
   const monthlyData = getMonthlyRevenue(payments, months)
   const collRate = getCollectionRate(payments, currentMonth)
-  const occupancyRate = getOccupancyRate(activeTenants.length, pgSettings.totalBeds)
+  const occupancyRate = getOccupancyRate(activeTenants.length, totalBeds)
   const outstanding = getOutstandingDues(payments, currentMonth)
   const avgRevenue = getAvgMonthlyRevenue(payments, months)
+
+  // Cash basis: money received during the month minus money spent during it.
+  const profitData = months.map(month => {
+    const received = receivedInMonth(payments, month)
+    const spent = roundMoney(expenses.filter(e => e.month === month).reduce((s, e) => s + e.amount, 0))
+    return { month, received, spent, profit: roundMoney(received - spent) }
+  })
+  const totals = profitData.reduce((t, d) => ({ received: t.received + d.received, spent: t.spent + d.spent }), { received: 0, spent: 0 })
+  const totalProfit = roundMoney(totals.received - totals.spent)
 
   const chartData = monthlyData.map(d => ({
     label: new Date(d.month + '-01T00:00:00').toLocaleString('en-IN', { month: 'short' }),
@@ -52,7 +65,7 @@ export default function AnalyticsPage() {
           {
             label: 'Occupancy',
             value: occupancyRate === null ? '—' : `${occupancyRate}%`,
-            sub: occupancyRate === null ? 'set total beds in Settings' : `${activeTenants.length} of ${pgSettings.totalBeds} beds`,
+            sub: occupancyRate === null ? 'add rooms in Rooms & Beds' : `${activeTenants.length} of ${totalBeds} beds`,
             color: occupancyRate === null ? 'text-slate-400' : occupancyRate >= 80 ? 'text-emerald-600' : 'text-amber-600',
           },
         ].map(k => (
@@ -69,6 +82,42 @@ export default function AnalyticsPage() {
         <p className="text-slate-400 text-xs mb-6">Amount collected, last {range} months — hover a bar for the exact amount</p>
         <BarChart data={chartData} color="bg-indigo-500" formatValue={formatCurrencyRounded} />
       </div>
+
+      {showProfit && (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 flex flex-wrap items-baseline justify-between gap-2">
+            <div>
+              <h2 className="font-semibold text-slate-900">Profit & Loss</h2>
+              <p className="text-slate-400 text-xs mt-0.5">Money received minus <Link href="/dashboard/expenses" className="text-indigo-600 hover:text-indigo-700">expenses</Link>, by the month it happened</p>
+            </div>
+            <p className="text-sm text-slate-500">
+              Last {range} months: <span className={`font-bold ${totalProfit >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>{totalProfit >= 0 ? '' : '−'}{formatCurrencyRounded(Math.abs(totalProfit))}</span>
+              {totals.received > 0 && <span className="text-slate-400"> · {Math.round((totalProfit / totals.received) * 100)}% margin</span>}
+            </p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[480px]">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-100">
+                  {['Month', 'Received', 'Expenses', 'Profit'].map((h, i) => (
+                    <th key={h} scope="col" className={`px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider ${i === 0 ? 'text-left' : 'text-right'}`}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {[...profitData].reverse().map(d => (
+                  <tr key={d.month} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-5 py-3.5 font-medium text-slate-900">{formatMonth(d.month)}</td>
+                    <td className="px-5 py-3.5 text-right text-emerald-600 font-medium">{formatCurrencyRounded(d.received)}</td>
+                    <td className="px-5 py-3.5 text-right text-slate-600">{d.spent ? formatCurrencyRounded(d.spent) : '—'}</td>
+                    <td className={`px-5 py-3.5 text-right font-semibold ${d.profit >= 0 ? 'text-slate-900' : 'text-red-600'}`}>{d.profit < 0 && '−'}{formatCurrencyRounded(Math.abs(d.profit))}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100">
@@ -111,7 +160,7 @@ export default function AnalyticsPage() {
         <h2 className="font-semibold text-slate-900 mb-4">Occupancy</h2>
         {occupancyRate === null ? (
           <p className="text-sm text-slate-500">
-            Add your total number of beds in <Link href="/dashboard/settings" className="text-indigo-600 font-medium hover:text-indigo-700">Settings</Link> to track occupancy.
+            Add your rooms and beds in <Link href="/dashboard/rooms" className="text-indigo-600 font-medium hover:text-indigo-700">Rooms & Beds</Link> to track occupancy.
           </p>
         ) : (
           <div className="flex items-center gap-4 mb-4">
@@ -123,7 +172,7 @@ export default function AnalyticsPage() {
         )}
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-500 mt-4">
           <span><span className="font-semibold text-slate-900">{activeTenants.length}</span> active</span>
-          {pgSettings.totalBeds > 0 && <span><span className="font-semibold text-slate-900">{Math.max(0, pgSettings.totalBeds - activeTenants.length)}</span> beds free</span>}
+          {totalBeds > 0 && <span><span className="font-semibold text-slate-900">{Math.max(0, totalBeds - activeTenants.length)}</span> beds free</span>}
           <span><span className="font-semibold text-slate-900">{vacated.length}</span> vacated (all time)</span>
         </div>
       </div>

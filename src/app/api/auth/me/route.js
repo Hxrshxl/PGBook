@@ -1,6 +1,24 @@
 import { route, readJson, json, ApiError } from '@/lib/api'
+import { capabilitiesFor, ORG_ROLES } from '@/lib/policy'
+import { PLANS } from '@/lib/plans'
 
-export const GET = route(async ({ user }) => json({ user: user.toJSON() }))
+// The signed-in person plus what they can do: role, permissions and which properties.
+export const GET = route(async ({ user, org, role, membership, actor }) => json({
+  user: user.toJSON(),
+  access: {
+    role,
+    roleLabel: ORG_ROLES[role],
+    permissions: capabilitiesFor(actor),
+    propertyIds: membership?.propertyIds?.length ? membership.propertyIds.map(String) : null,
+    org: {
+      id: org._id.toString(),
+      ownerName: org.name,
+      plan: org.plan,
+      planLabel: PLANS[org.plan]?.label ?? org.plan,
+      trialEndsAt: org.plan === 'trial' ? org.effectiveTrialEnd() : null,
+    },
+  },
+}))
 
 // Update profile details (name). Email changes need verification and are not supported yet.
 export const PUT = route(async ({ request, user, audit }) => {

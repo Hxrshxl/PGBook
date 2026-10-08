@@ -3,14 +3,14 @@ import { useState } from 'react'
 import { Bell, MessageCircle, ChevronDown, ChevronUp, Check, Copy } from 'lucide-react'
 import { useAppData } from '@/context/AppContext'
 import { useToast } from '@/context/ToastContext'
-import { getCurrentMonth, formatMonth, formatCurrency, getMonthPayments, getBalance, isBillableMonth, toWhatsAppNumber } from '@/utils/helpers'
+import { getCurrentMonth, formatMonth, formatCurrency, getMonthPayments, getBalance, isBillableMonth, toWhatsAppNumber, chargesTotal } from '@/utils/helpers'
 import { generateReminderMessage } from '@/utils/generateReminderMessage'
 import MonthSelector from '@/components/ui/MonthSelector'
 import EmptyState from '@/components/ui/EmptyState'
 import Badge from '@/components/ui/Badge'
 
 export default function RemindersPage() {
-  const { tenants, payments, pgSettings } = useAppData()
+  const { tenants, payments, settingsFor } = useAppData()
   const { showToast } = useToast()
   const [month, setMonth] = useState(getCurrentMonth)
   const [lang, setLang] = useState('en')
@@ -29,7 +29,7 @@ export default function RemindersPage() {
   const unsent = pendingRows.filter(r => !sent[sentKey(r.tenant)])
 
   function openWhatsApp(tenant, payment) {
-    const msg = generateReminderMessage(tenant, payment, pgSettings, lang, month)
+    const msg = generateReminderMessage(tenant, payment, settingsFor(tenant), lang, month)
     const url = `https://wa.me/${toWhatsAppNumber(tenant.phone)}?text=${encodeURIComponent(msg)}`
     window.open(url, '_blank', 'noopener,noreferrer')
     showToast(`Opening WhatsApp for ${tenant.name}…`, 'info')
@@ -38,7 +38,7 @@ export default function RemindersPage() {
 
   async function copyMessage(tenant, payment) {
     try {
-      await navigator.clipboard.writeText(generateReminderMessage(tenant, payment, pgSettings, lang, month))
+      await navigator.clipboard.writeText(generateReminderMessage(tenant, payment, settingsFor(tenant), lang, month))
       showToast('Message copied.')
     } catch {
       showToast('Could not copy — select the preview text instead.', 'error')
@@ -86,7 +86,7 @@ export default function RemindersPage() {
         )}
       </div>
 
-      {!pgSettings.upiId && pendingRows.length > 0 && (
+      {pendingRows.some(r => !settingsFor(r.tenant).upiId) && (
         <p className="text-amber-700 text-xs bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mb-4">
           Add your UPI ID in Settings so it is included in reminders.
         </p>
@@ -102,7 +102,7 @@ export default function RemindersPage() {
         <div className="space-y-3">
           <p className="text-slate-500 text-sm">{pendingRows.length} tenant(s) have pending dues for {formatMonth(month)}</p>
           {pendingRows.map(({ tenant, payment }) => {
-            const balance = payment ? getBalance(payment) : tenant.rentAmount
+            const balance = payment ? getBalance(payment) : tenant.rentAmount + chargesTotal(tenant.recurringCharges)
             const isOpen = expanded[tenant.id]
             const wasSent = sent[sentKey(tenant)]
 
@@ -146,7 +146,7 @@ export default function RemindersPage() {
                         <Copy size={12} /> Copy
                       </button>
                     </div>
-                    <pre className="text-slate-700 text-sm whitespace-pre-wrap font-sans leading-relaxed">{generateReminderMessage(tenant, payment, pgSettings, lang, month)}</pre>
+                    <pre className="text-slate-700 text-sm whitespace-pre-wrap font-sans leading-relaxed">{generateReminderMessage(tenant, payment, settingsFor(tenant), lang, month)}</pre>
                   </div>
                 )}
               </div>

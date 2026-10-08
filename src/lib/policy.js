@@ -37,15 +37,54 @@ const ADMIN_CAPABILITIES = {
   analyst: ['platform.view'],
 }
 
-// Organization capabilities. Only the owner exists today; staff roles
-// (manager, accountant, caretaker) slot in here in Phase 3.
+export const ORG_ROLES = {
+  owner:      'Owner',
+  manager:    'Manager',
+  accountant: 'Accountant',
+  caretaker:  'Caretaker',
+}
+
+export const ORG_ROLE_DESCRIPTIONS = {
+  manager:    'Runs day-to-day operations: tenants, rooms, rent, bills, expenses, complaints. Removing payments and large dues changes need your approval.',
+  accountant: 'Money only: rent, payments, bills, expenses and reports. Cannot see ID documents or manage tenants. Corrections need your approval.',
+  caretaker:  'On-site warden: tenant list, rooms, complaints. Collects cash, which you or an accountant confirm before it counts.',
+}
+
+// Organization capabilities (owner and staff). Deliberately no '*' wildcard:
+// a wildcard would also match platform capabilities like 'orgs.suspend'.
+const ORG_STAFF_CAPABILITIES = {
+  manager: [
+    'dashboard.view', 'tenants.view', 'tenants.manage', 'tenants.kyc', 'rooms.view', 'rooms.manage',
+    'rent.view', 'rent.manage', 'rent.record', 'rent.adjust', 'rent.requestRemoveEntry', 'rent.lateFees',
+    'cash.confirm', 'bills.view', 'bills.manage', 'expenses.view', 'expenses.manage',
+    'complaints.view', 'complaints.manage', 'reports.view', 'settings.view', 'activity.view', 'approvals.view',
+  ],
+  accountant: [
+    'dashboard.view', 'tenants.view', 'rooms.view', 'rent.view', 'rent.manage', 'rent.record',
+    'rent.requestAdjust', 'rent.requestRemoveEntry', 'rent.lateFees', 'cash.confirm',
+    'bills.view', 'bills.manage', 'expenses.view', 'expenses.manage', 'reports.view', 'settings.view', 'approvals.view',
+  ],
+  caretaker: [
+    'dashboard.view', 'tenants.view', 'rooms.view', 'rent.view', 'cash.collect',
+    'complaints.view', 'complaints.manage', 'settings.view', 'approvals.view',
+  ],
+}
+
+// Only the owner can do these.
+const OWNER_ONLY_CAPABILITIES = [
+  'tenants.delete', 'rent.removeEntry', 'rent.adjustAny', 'team.manage', 'properties.manage',
+  'settings.manage', 'approvals.decide', 'data.export',
+]
+
 const ORG_CAPABILITIES = {
-  owner: ['*'],
+  owner: [...new Set([...Object.values(ORG_STAFF_CAPABILITIES).flat(), ...OWNER_ONLY_CAPABILITIES])],
+  ...ORG_STAFF_CAPABILITIES,
 }
 
 export const LIMITS = {
   supportTrialExtensionDays: 14,
   maxTrialExtensionDays: 90,
+  managerAdjustLimit: 1000, // ₹ a manager may change a month's dues by without owner approval
 }
 
 /** actor: { realm: 'admin' | 'org' | 'resident', role } */
@@ -53,7 +92,7 @@ export function can(actor, capability) {
   if (!actor) return false
   const table = actor.realm === 'admin' ? ADMIN_CAPABILITIES : actor.realm === 'org' ? ORG_CAPABILITIES : {}
   const granted = table[actor.role] ?? []
-  return granted.includes('*') || granted.includes(capability)
+  return granted.includes(capability)
 }
 
 export function capabilitiesFor(actor) {

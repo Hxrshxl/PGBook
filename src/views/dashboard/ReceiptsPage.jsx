@@ -33,7 +33,7 @@ function printHtml(html, title) {
 }
 
 export default function ReceiptsPage() {
-  const { tenants, payments, pgSettings } = useAppData()
+  const { tenants, payments, settingsFor } = useAppData()
   const { showToast } = useToast()
   const [month, setMonth] = useState(getCurrentMonth)
   const [previewingId, setPreviewingId] = useState(null)
@@ -112,11 +112,11 @@ export default function ReceiptsPage() {
               <ReceiptTemplate
                 tenant={previewing.tenant}
                 payment={previewing.payment}
-                pgSettings={pgSettings}
+                pgSettings={settingsFor(previewing.payment)}
                 receiptNumber={buildReceiptNumber(previewing.payment)}
               />
             </div>
-            {!pgSettings.pgName && (
+            {!settingsFor(previewing.payment).pgName && (
               <p className="text-amber-700 text-xs bg-amber-50 rounded-lg px-3 py-2 mt-4">Tip: add your PG name, address and phone in Settings so they appear on receipts.</p>
             )}
             <div className="flex justify-end gap-3 mt-5 pt-4 border-t border-slate-100">

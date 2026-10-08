@@ -7,7 +7,7 @@ import { useToast } from '@/context/ToastContext'
 import Spinner from '@/components/ui/Spinner'
 import Modal from '@/components/ui/Modal'
 import Pill from '@/components/admin/Pill'
-import ReasonDialog from '@/components/admin/ReasonDialog'
+import ReasonDialog from '@/components/ui/ReasonDialog'
 import { relative } from '@/components/admin/format'
 
 const inputCls = 'w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-indigo-500'

@@ -2,6 +2,7 @@
 import { useState, useMemo } from 'react'
 import { Plus, Search, Users } from 'lucide-react'
 import { useAppData } from '@/context/AppContext'
+import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/context/ToastContext'
 import { todayISO } from '@/utils/helpers'
 import Modal from '@/components/ui/Modal'
@@ -17,7 +18,10 @@ const TABS = [
 ]
 
 export default function TenantsPage() {
-  const { tenants, addTenant, updateTenant, vacateTenant, reactivateTenant, deleteTenant } = useAppData()
+  const { tenants, properties, currentProperty, propertyById, addTenant, updateTenant, vacateTenant, reactivateTenant, deleteTenant } = useAppData()
+  const { can } = useAuth()
+  const canManage = can('tenants.manage')
+  const showProperty = !currentProperty && properties.length > 1
   const { showToast } = useToast()
   const [tab, setTab] = useState('active')
   const [search, setSearch] = useState('')
@@ -90,9 +94,11 @@ export default function TenantsPage() {
           <h1 className="text-2xl font-bold text-slate-900">Tenant Roster</h1>
           <p className="text-slate-500 text-sm mt-1">{counts.active} active · {counts.vacated} vacated</p>
         </div>
-        <button onClick={() => setAddOpen(true)} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm px-4 py-2.5 rounded-xl transition-colors shrink-0">
-          <Plus size={16} /> <span className="hidden sm:inline">Add Tenant</span><span className="sm:hidden">Add</span>
-        </button>
+        {canManage && (
+          <button onClick={() => setAddOpen(true)} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm px-4 py-2.5 rounded-xl transition-colors shrink-0">
+            <Plus size={16} /> <span className="hidden sm:inline">Add Tenant</span><span className="sm:hidden">Add</span>
+          </button>
+        )}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
@@ -115,12 +121,13 @@ export default function TenantsPage() {
         <EmptyState icon={Users}
           title={search ? 'No tenants match your search' : tab === 'all' ? 'No tenants yet' : `No ${tab} tenants`}
           message={search ? 'Try a different name, room, or phone.' : tab === 'vacated' ? 'Tenants you mark as vacated appear here.' : 'Add your first tenant to get started.'}
-          actionLabel={!search && tab !== 'vacated' ? 'Add Tenant' : undefined} onAction={() => setAddOpen(true)} />
+          actionLabel={canManage && !search && tab !== 'vacated' ? 'Add Tenant' : undefined} onAction={() => setAddOpen(true)} />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map(t => (
-            <TenantCard key={t.id} tenant={t}
-              onEdit={setEditingTenant} onVacate={openVacate} onReactivate={setRestoring} onDelete={setDeleting} />
+            <TenantCard key={t.id} tenant={t} propertyName={showProperty ? propertyById.get(t.propertyId)?.name : null}
+              onEdit={canManage ? setEditingTenant : null} onVacate={canManage ? openVacate : null}
+              onReactivate={canManage ? setRestoring : null} onDelete={can('tenants.delete') ? setDeleting : null} />
           ))}
         </div>
       )}

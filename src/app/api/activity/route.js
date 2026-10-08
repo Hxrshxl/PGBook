@@ -25,12 +25,12 @@ function ownerView(event) {
 
 // Everything that happened in the owner's account — including anything PGBook staff
 // did to it (suspensions, trial changes, forced sign-outs), shown with the reason.
-export const GET = route(async ({ request, user }) => {
+export const GET = route(async ({ request, org }) => {
   const params = new URL(request.url).searchParams
   const category = CATEGORIES[params.get('category')] ?? {}
   const page = cursorFilter(params.get('cursor'))
   // Internal approval steps stay internal; the owner sees the outcome (e.g. org.suspended).
-  const query = { $and: [{ orgId: user._id }, { action: { $not: /^approval\./ } }, category, page] }
+  const query = { $and: [{ orgId: org._id }, { action: { $not: /^approval\./ } }, category, page] }
 
   const docs = await AuditEvent.find(query).sort({ createdAt: -1, _id: -1 }).limit(LIMIT + 1)
   return json({ events: docs.slice(0, LIMIT).map(ownerView), nextCursor: nextCursor(docs, LIMIT) })

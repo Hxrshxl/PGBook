@@ -17,8 +17,12 @@ function defaultSelection(tenants, month) {
   return new Set(tenants.filter(t => t.status === 'active' && isBillableMonth(t.moveInDate, month)).map(t => t.id))
 }
 
-// onSubmit({ type, totalAmount, month, tenantIds, note }) should throw on failure.
-export default function AddBillModal({ tenants, defaultMonth, onSubmit, onClose }) {
+// onSubmit({ type, totalAmount, month, tenantIds, note, propertyId }) should throw on failure.
+// With several properties and none selected, the bill's property is chosen here (a bill belongs to one building).
+export default function AddBillModal({ tenants: allTenants, properties = [], defaultPropertyId, defaultMonth, onSubmit, onClose }) {
+  const choosesProperty = !defaultPropertyId && properties.length > 1
+  const [propertyId, setPropertyId] = useState(defaultPropertyId ?? properties[0]?.id ?? '')
+  const tenants = useMemo(() => (choosesProperty ? allTenants.filter(t => t.propertyId === propertyId) : allTenants), [allTenants, choosesProperty, propertyId])
   const [form, setForm] = useState({ type: 'electricity', totalAmount: '', month: defaultMonth, note: '' })
   const [selected, setSelected] = useState(() => defaultSelection(tenants, defaultMonth))
   const { run, busy, error } = useAsyncAction(onSubmit)
@@ -34,6 +38,11 @@ export default function AddBillModal({ tenants, defaultMonth, onSubmit, onClose 
   const chosen = candidates.filter(t => selected.has(t.id))
   const total = Number(form.totalAmount) || 0
   const shares = splitAmount(total, chosen.length)
+
+  function changeProperty(id) {
+    setPropertyId(id)
+    setSelected(defaultSelection(allTenants.filter(t => t.propertyId === id), form.month))
+  }
 
   function changeMonth(month) {
     set('month', month)
@@ -51,13 +60,21 @@ export default function AddBillModal({ tenants, defaultMonth, onSubmit, onClose 
 
   function handleSubmit(e) {
     e.preventDefault()
-    run({ type: form.type, totalAmount: total, month: form.month, note: form.note, tenantIds: chosen.map(t => t.id) })
+    run({ type: form.type, totalAmount: total, month: form.month, note: form.note, tenantIds: chosen.map(t => t.id), ...(propertyId ? { propertyId } : {}) })
   }
 
   const inputCls = 'w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 transition-colors'
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
+      {choosesProperty && (
+        <div>
+          <label htmlFor="bill-prop" className="block text-slate-700 text-sm font-medium mb-1.5">Property *</label>
+          <select id="bill-prop" required value={propertyId} onChange={e => changeProperty(e.target.value)} className={inputCls}>
+            {properties.map(pr => <option key={pr.id} value={pr.id}>{pr.name}</option>)}
+          </select>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label htmlFor="bill-type" className="block text-slate-700 text-sm font-medium mb-1.5">Bill type *</label>

@@ -1,11 +1,12 @@
 import { route, readJson, json, ApiError, APP_TIME_ZONE } from '@/lib/api'
-import { findPayment } from '@/lib/paymentLookup'
+import { findPayment, recordedBy } from '@/lib/paymentLookup'
 import { paymentTarget } from '@/lib/auditTargets'
 import { getBalance, roundMoney, todayISO } from '@/utils/helpers'
 
-// Records money received against a month's dues.
-export const POST = route(async ({ request, params, user, audit }) => {
-  const payment = await findPayment(user, params.id)
+// Records money received against a month's dues. Caretakers can't record directly —
+// they log cash collections, which become payments once confirmed (/api/cash).
+export const POST = route(async ({ request, params, scope, actor, audit }) => {
+  const payment = await findPayment(scope, params.id)
   const { amount, date, method, note } = await readJson(request)
 
   const value = roundMoney(amount)
@@ -33,6 +34,7 @@ export const POST = route(async ({ request, params, user, audit }) => {
     date: date ?? todayISO(APP_TIME_ZONE),
     method: method ?? 'upi',
     note: typeof note === 'string' ? note : '',
+    recordedBy: recordedBy(actor),
   })
   await payment.save()
   const entry = payment.transactions[payment.transactions.length - 1]

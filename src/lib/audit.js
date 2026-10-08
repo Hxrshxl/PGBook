@@ -1,8 +1,8 @@
 import AuditEvent from './models/AuditEvent.js'
 import { ADMIN_ROLES } from './policy.js'
 
-export function orgActor(user) {
-  return { realm: 'org', id: user._id, name: user.name, role: 'owner' }
+export function orgActor(user, role = 'owner') {
+  return { realm: 'org', id: user._id, name: user.name, role }
 }
 
 export function adminActor(admin) {

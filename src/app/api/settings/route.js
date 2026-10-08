@@ -1,25 +1,21 @@
-import { route, readJson, json, pick } from '@/lib/api'
+import Property from '@/lib/models/Property'
+import { route, readJson, json, ApiError } from '@/lib/api'
+import { legacySettings, propertyInput, updateProperty } from '@/lib/propertyFields'
 
-const SETTINGS_FIELDS = ['pgName', 'address', 'ownerName', 'phone', 'upiId', 'logoText', 'totalBeds', 'rentDueDay']
+// Compatibility endpoint from the single-PG days: reads and updates the first property.
+// New code uses /api/properties.
+async function firstProperty(scope) {
+  const property = await Property.findOne(scope.propertyQuery({ status: 'active' })).sort({ createdAt: 1 })
+  if (!property) throw new ApiError(404, 'No property found.')
+  return property
+}
 
-export const GET = route(async ({ user }) => json(user.pgSettings ?? {}), { permission: 'settings.view' })
+export const GET = route(async ({ scope }) => json(legacySettings(await firstProperty(scope))), { permission: 'settings.view' })
 
-// Partial update: only the fields sent are changed.
-export const PUT = route(async ({ request, user, audit }) => {
+export const PUT = route(async ({ request, org, scope, actor }) => {
   const body = await readJson(request)
-  const before = user.pgSettings?.toObject?.() ?? {}
-  for (const [key, value] of Object.entries(pick(body, SETTINGS_FIELDS))) {
-    user.set(`pgSettings.${key}`, value)
-  }
-  await user.save()
-
-  const after = user.pgSettings.toObject()
-  const fields = SETTINGS_FIELDS.filter(k => before[k] !== after[k])
-  if (fields.length) await audit('settings.update', { target: { kind: 'settings', label: 'PG settings' }, details: { fields } })
-  // The UPI ID is where tenants send rent — changing it is the classic account-takeover fraud,
-  // so it gets its own security event (shown to the owner and to PGBook Trust & Safety).
-  if (fields.includes('upiId')) {
-    await audit('settings.payout_upi_changed', { target: { kind: 'settings', label: 'Payout UPI ID' }, details: { from: before.upiId ?? '', to: after.upiId } })
-  }
-  return json(user.pgSettings)
+  const input = propertyInput({ ...body, name: body.pgName ?? body.name })
+  if (input.name === undefined) delete input.name
+  const property = await updateProperty(await firstProperty(scope), input, { actor, orgId: org._id, request })
+  return json(legacySettings(property))
 }, { permission: 'settings.manage' })

@@ -9,9 +9,10 @@ import { json } from '@/lib/api'
 import { adminRoute } from '@/lib/adminApi'
 import { can } from '@/lib/policy'
 import { redactForAdmin } from '@/lib/audit'
-import { approvalView, expireStaleApprovals } from '@/lib/approvals'
+import { ADMIN_REALM, approvalView, expireStaleApprovals } from '@/lib/approvals'
 import { PLANS, PAID_PLAN_IDS, TRIAL_DAYS } from '@/lib/plans'
 import { getCurrentMonth } from '@/utils/helpers'
+import { OWNER_ONLY, propertyFacts } from '@/lib/orgStats'
 import pkg from '../../../../../package.json'
 
 const DAY = 86400000
@@ -31,6 +32,7 @@ export const GET = adminRoute(async ({ actor }) => {
   const seeAccounts = can(actor, 'orgs.view')
 
   const [owners = {}] = await User.aggregate([
+    { $match: OWNER_ONLY },
     { $addFields: { trialEnd: trialEndExpr } },
     {
       $group: {
@@ -52,14 +54,13 @@ export const GET = adminRoute(async ({ actor }) => {
             },
           },
         },
-        beds: { $sum: { $ifNull: ['$pgSettings.totalBeds', 0] } },
       },
     },
   ])
 
-  // Occupancy: active tenants vs beds, only for owners who have entered their bed count.
-  const [bedsByOrg, activeByOrg, activeTenants, openComplaints] = await Promise.all([
-    User.find({ 'pgSettings.totalBeds': { $gt: 0 } }).select('pgSettings.totalBeds').lean(),
+  // Occupancy: active tenants vs beds (room capacities, or a property's manual bed count).
+  const [facts, activeByOrg, activeTenants, openComplaints] = await Promise.all([
+    propertyFacts(null),
     Tenant.aggregate([{ $match: { status: 'active' } }, { $group: { _id: '$userId', n: { $sum: 1 } } }]),
     Tenant.countDocuments({ status: 'active' }),
     Complaint.countDocuments({ status: { $ne: 'resolved' } }),
@@ -67,9 +68,10 @@ export const GET = adminRoute(async ({ actor }) => {
   const activeMap = new Map(activeByOrg.map(r => [r._id.toString(), r.n]))
   let occupiedBeds = 0
   let configuredBeds = 0
-  for (const org of bedsByOrg) {
-    configuredBeds += org.pgSettings.totalBeds
-    occupiedBeds += Math.min(org.pgSettings.totalBeds, activeMap.get(org._id.toString()) ?? 0)
+  for (const [orgId, f] of facts) {
+    if (!f.beds) continue
+    configuredBeds += f.beds
+    occupiedBeds += Math.min(f.beds, activeMap.get(orgId) ?? 0)
   }
 
   // Payments recorded this month (rent goes owner-direct; this is what owners logged in PGBook).
@@ -85,7 +87,7 @@ export const GET = adminRoute(async ({ actor }) => {
   // Weekly signups, last 12 weeks
   const start = new Date(now.getTime() - 12 * 7 * DAY)
   const weekly = await User.aggregate([
-    { $match: { createdAt: { $gte: start } } },
+    { $match: { createdAt: { $gte: start }, ...OWNER_ONLY } },
     { $group: { _id: { $floor: { $divide: [{ $subtract: ['$createdAt', start] }, 7 * DAY] } }, n: { $sum: 1 } } },
   ])
   const signupsByWeek = Array.from({ length: 12 }, (_, i) => ({
@@ -95,7 +97,7 @@ export const GET = adminRoute(async ({ actor }) => {
 
   // Needs attention
   await expireStaleApprovals()
-  const pending = await ApprovalRequest.find({ status: 'pending' }).sort({ createdAt: 1 })
+  const pending = await ApprovalRequest.find({ status: 'pending', ...ADMIN_REALM }).sort({ createdAt: 1 })
   const waitingOnMe = pending.map(a => approvalView(a, actor)).filter(a => a.canDecide)
   const day1 = new Date(now - DAY)
   const [failedOwnerLogins, failedAdminLogins, payoutChanges] = await Promise.all([
@@ -110,12 +112,16 @@ export const GET = adminRoute(async ({ actor }) => {
   if (seeAccounts) {
     trialsEnding = await User.aggregate([
       { $addFields: { trialEnd: trialEndExpr } },
-      { $match: { plan: 'trial', status: 'active', trialEnd: { $gte: now, $lte: in3 } } },
+      { $match: { ...OWNER_ONLY, plan: 'trial', status: 'active', trialEnd: { $gte: now, $lte: in3 } } },
       { $sort: { trialEnd: 1 } },
       { $limit: 5 },
-      { $project: { name: 1, email: 1, pgName: '$pgSettings.pgName', trialEnd: 1 } },
+      { $project: { name: 1, email: 1, trialEnd: 1 } },
     ])
-    suspendedOwners = await User.find({ status: 'suspended' }).sort({ 'suspension.at': -1 }).limit(5).select('name email pgSettings.pgName suspension').lean()
+    const trialFacts = await propertyFacts(trialsEnding.map(t => t._id))
+    for (const t of trialsEnding) t.pgName = trialFacts.get(t._id.toString())?.firstProperty.name ?? ''
+    suspendedOwners = await User.find({ ...OWNER_ONLY, status: 'suspended' }).sort({ 'suspension.at': -1 }).limit(5).select('name email suspension').lean()
+    const suspendedFacts = await propertyFacts(suspendedOwners.map(u => u._id))
+    for (const u of suspendedOwners) u.pgName = suspendedFacts.get(u._id.toString())?.firstProperty.name ?? ''
     activity = (await AuditEvent.find({ action: { $nin: NOISY_ACTIONS } }).sort({ createdAt: -1 }).limit(12)).map(redactForAdmin)
   }
 
@@ -138,7 +144,7 @@ export const GET = adminRoute(async ({ actor }) => {
     },
     usage: {
       activeTenants,
-      beds: owners.beds ?? 0,
+      beds: [...facts.values()].reduce((s, f) => s + f.beds, 0),
       occupancy: configuredBeds ? Math.round((occupiedBeds / configuredBeds) * 100) : null,
       paymentsCount,
       paymentsVolume,
@@ -155,7 +161,7 @@ export const GET = adminRoute(async ({ actor }) => {
       failedAdminLogins,
       payoutChanges,
       trialsEnding: trialsEnding.map(t => ({ id: t._id.toString(), name: t.name, email: t.email, pgName: t.pgName, trialEnd: t.trialEnd })),
-      suspended: suspendedOwners.map(u => ({ id: u._id.toString(), name: u.name, pgName: u.pgSettings?.pgName, suspension: u.suspension })),
+      suspended: suspendedOwners.map(u => ({ id: u._id.toString(), name: u.name, pgName: u.pgName, suspension: u.suspension })),
     },
     activity,
     health: {

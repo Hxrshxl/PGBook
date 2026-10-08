@@ -7,9 +7,10 @@ import ApprovalRequest from '@/lib/models/ApprovalRequest'
 import { json } from '@/lib/api'
 import { adminRoute } from '@/lib/adminApi'
 import { findOrg } from '@/lib/orgAdmin'
-import { approvalView } from '@/lib/approvals'
+import { ADMIN_REALM, approvalView } from '@/lib/approvals'
 import { can, maxTrialExtension } from '@/lib/policy'
 import { PLANS } from '@/lib/plans'
+import { propertyFacts, teamSize } from '@/lib/orgStats'
 import { getCurrentMonth, todayISO } from '@/utils/helpers'
 
 const DAY = 86400000
@@ -38,10 +39,13 @@ export const GET = adminRoute(async ({ params, actor }) => {
     AuditEvent.countDocuments({ orgId: user._id, 'actor.realm': 'org', createdAt: { $gte: since30 } }),
     AuditEvent.find({ orgId: user._id, action: { $in: ['auth.login', 'auth.login_failed', 'auth.login_blocked'] } })
       .sort({ createdAt: -1 }).limit(10),
-    ApprovalRequest.find({ orgId: user._id, status: 'pending' }).sort({ createdAt: -1 }),
+    ApprovalRequest.find({ orgId: user._id, status: 'pending', ...ADMIN_REALM }).sort({ createdAt: -1 }),
   ])
   const byStatus = Object.fromEntries(tenantCounts.map(c => [c._id, c.n]))
-  const beds = user.pgSettings?.totalBeds ?? 0
+  const facts = (await propertyFacts([user._id])).get(user._id.toString())
+  const first = facts?.firstProperty
+  const beds = facts?.beds ?? 0
+  const staff = await teamSize(user._id)
   const active = byStatus.active ?? 0
 
   return json({
@@ -49,9 +53,9 @@ export const GET = adminRoute(async ({ params, actor }) => {
       id: user._id.toString(),
       name: user.name,
       email: user.email,
-      phone: user.pgSettings?.phone ?? '',
-      pgName: user.pgSettings?.pgName ?? '',
-      address: user.pgSettings?.address ?? '',
+      phone: first?.phone ?? '',
+      pgName: first?.name ?? '',
+      address: first?.address ?? '',
       plan: user.plan,
       planLabel: PLANS[user.plan]?.label ?? user.plan,
       status: user.status ?? 'active',
@@ -63,6 +67,8 @@ export const GET = adminRoute(async ({ params, actor }) => {
     },
     usage: {
       activeTenants: active,
+      properties: facts?.propertyCount ?? 0,
+      staff,
       vacatedTenants: byStatus.vacated ?? 0,
       beds,
       occupancy: beds ? Math.min(100, Math.round((active / beds) * 100)) : null,

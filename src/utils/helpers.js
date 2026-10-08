@@ -107,8 +107,32 @@ export function getMonthPayments(payments, month) {
   return payments.filter(p => p.month === month)
 }
 
+export function chargesTotal(charges) {
+  return roundMoney((charges ?? []).reduce((sum, c) => sum + (Number(c.amount) || 0), 0))
+}
+
+/** Everything due for the month: rent + utility share + recurring charges (e.g. food) + late fee. */
 export function getTotalDue(payment) {
-  return roundMoney((payment.rentAmount ?? 0) + (payment.utilityShare ?? 0))
+  return roundMoney((payment.rentAmount ?? 0) + (payment.utilityShare ?? 0) + chargesTotal(payment.extraCharges) + (payment.lateFee ?? 0))
+}
+
+function daysBetween(fromISO, toISO) {
+  return Math.round((Date.parse(`${toISO}T00:00:00Z`) - Date.parse(`${fromISO}T00:00:00Z`)) / 86400000)
+}
+
+/**
+ * Late fee for a month's dues under a property's rule.
+ * rule: { enabled, graceDays, type: 'flat' | 'perDay', amount, maxAmount (0 = no cap) }
+ * The fee applies once `today` is past the due day + grace days and something is still unpaid.
+ */
+export function calcLateFee(rule, { month, dueDay, today, unpaid }) {
+  if (!rule?.enabled || !(rule.amount > 0) || !(unpaid > 0) || !isValidMonth(month)) return 0
+  const due = `${month}-${String(Math.min(Math.max(dueDay || 1, 1), 28)).padStart(2, '0')}`
+  const daysLate = daysBetween(due, today) - (rule.graceDays ?? 0)
+  if (daysLate <= 0) return 0
+  let fee = rule.type === 'perDay' ? rule.amount * daysLate : rule.amount
+  if (rule.maxAmount > 0) fee = Math.min(fee, rule.maxAmount)
+  return roundMoney(fee)
 }
 
 export function getBalance(payment) {
@@ -133,6 +157,21 @@ export function getPaymentEntries(payment) {
     return [{ id: `legacy-${payment.id}`, amount: payment.amountPaid, date: payment.paidDate, method: 'other', note: '', createdAt: payment.updatedAt, legacy: true }]
   }
   return []
+}
+
+// ── Expenses & profit ─────────────────────────────────────────
+
+export const EXPENSE_CATEGORY_LABELS = {
+  salary: 'Staff salary', groceries: 'Groceries & food', maintenance: 'Repairs & maintenance', utilities: 'Electricity & water',
+  rent: 'Building rent / lease', supplies: 'Supplies', cleaning: 'Cleaning', internet: 'Internet', taxes: 'Taxes & fees', other: 'Other',
+}
+export const EXPENSE_CATEGORIES = Object.keys(EXPENSE_CATEGORY_LABELS)
+
+/** Money actually received during a calendar month (cash basis), whichever month's dues it paid. */
+export function receivedInMonth(payments, month) {
+  return roundMoney(payments.reduce((sum, p) => sum + getPaymentEntries(p)
+    .filter(e => typeof e.date === 'string' && e.date.startsWith(month))
+    .reduce((s, e) => s + (e.amount ?? 0), 0), 0))
 }
 
 // ── Phone numbers ─────────────────────────────────────────────

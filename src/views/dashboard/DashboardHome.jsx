@@ -1,24 +1,31 @@
 'use client'
 import Link from 'next/link'
-import { TrendingUp, IndianRupee, Users, AlertCircle, ArrowRight, Bell, MessageSquare, Settings } from 'lucide-react'
+import { TrendingUp, IndianRupee, Users, AlertCircle, ArrowRight, Bell, MessageSquare, Settings, Inbox, Wallet } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useAppData } from '@/context/AppContext'
 import {
   getCurrentMonth, formatCurrency, formatCurrencyRounded, formatMonth, formatDate, getActiveTenants, getMonthPayments, getBalance,
-  getPaymentEntries, isBillableMonth, PAYMENT_METHOD_LABELS,
+  getPaymentEntries, isBillableMonth, PAYMENT_METHOD_LABELS, chargesTotal, receivedInMonth, roundMoney,
 } from '@/utils/helpers'
 import Badge from '@/components/ui/Badge'
 
+// Each shows only when the role can use it.
 const quickActions = [
-  { label: 'Add Tenant',        path: '/dashboard/tenants',   color: 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200'    },
-  { label: 'Record Payment',    path: '/dashboard/rent',      color: 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200' },
-  { label: 'Add Utility Bill',  path: '/dashboard/utilities', color: 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200'          },
-  { label: 'Generate Receipts', path: '/dashboard/receipts',  color: 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200'              },
+  { label: 'Add Tenant',        path: '/dashboard/tenants',    capability: 'tenants.manage',  color: 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200'    },
+  { label: 'Record Payment',    path: '/dashboard/rent',       capability: 'rent.record',     color: 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200' },
+  { label: 'Collect Cash',      path: '/dashboard/rent',       capability: 'cash.collect', unless: 'rent.record', color: 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200' },
+  { label: 'Add Expense',       path: '/dashboard/expenses',   capability: 'expenses.manage', color: 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'              },
+  { label: 'Add Utility Bill',  path: '/dashboard/utilities',  capability: 'bills.manage',    color: 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200'          },
+  { label: 'Log Complaint',     path: '/dashboard/complaints', capability: 'complaints.manage', color: 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200'               },
+  { label: 'Generate Receipts', path: '/dashboard/receipts',   capability: 'rent.view',       color: 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200'              },
 ]
 
 export default function DashboardHome() {
-  const { user } = useAuth()
-  const { tenants, payments, complaints, pgSettings } = useAppData()
+  const { user, can } = useAuth()
+  const { tenants, payments, complaints, expenses, rooms, approvals, properties, currentProperty, pgSettings } = useAppData()
+  const actions = quickActions.filter(a => can(a.capability) && !(a.unless && can(a.unless))).slice(0, 4)
+  const waiting = (approvals?.counts?.requests ?? 0) + (approvals?.counts?.cash ?? 0)
+  const placeName = currentProperty?.name ?? (properties.length > 1 ? `your ${properties.length} properties` : pgSettings.pgName || 'your PG')
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
@@ -42,14 +49,18 @@ export default function DashboardHome() {
     ...monthPayments
       .filter(p => p.status !== 'paid' && tenantById.get(p.tenantId)?.status === 'vacated')
       .map(p => ({ tenant: tenantById.get(p.tenantId), payment: p })),
-  ].map(r => ({ ...r, balance: r.payment ? getBalance(r.payment) : r.tenant.rentAmount }))
+  ].map(r => ({ ...r, balance: r.payment ? getBalance(r.payment) : r.tenant.rentAmount + chargesTotal(r.tenant.recurringCharges) }))
   const pendingDues = pending.reduce((s, r) => s + r.balance, 0)
   const openComplaints = complaints.filter(c => c.status !== 'resolved')
+  const beds = rooms.length ? rooms.reduce((s, r) => s + r.capacity, 0) : pgSettings.totalBeds
+  const showMoney = can('expenses.view')
+  const received = receivedInMonth(payments, currentMonth)
+  const spent = roundMoney(expenses.filter(e => e.month === currentMonth).reduce((s, e) => s + e.amount, 0))
 
   const stats = [
     { label: 'Collected this month', value: formatCurrencyRounded(monthlyRevenue), sub: formatMonth(currentMonth), icon: TrendingUp, color: 'bg-emerald-50 text-emerald-600' },
     { label: 'Paid in full', value: `${paidCount} / ${billable.length}`, sub: `${billable.length - paidCount} not fully paid`, icon: IndianRupee, color: 'bg-indigo-50 text-indigo-600' },
-    { label: 'Active tenants', value: activeTenants.length, sub: pgSettings.totalBeds ? `${pgSettings.totalBeds} beds total` : `${tenants.length - activeTenants.length} vacated`, icon: Users, color: 'bg-blue-50 text-blue-600' },
+    { label: 'Active tenants', value: activeTenants.length, sub: beds ? `${Math.max(0, beds - activeTenants.length)} of ${beds} beds free` : `${tenants.length - activeTenants.length} vacated`, icon: Users, color: 'bg-blue-50 text-blue-600' },
     { label: 'Pending dues', value: formatCurrencyRounded(pendingDues), sub: `${pending.length} tenant(s)`, icon: AlertCircle, color: 'bg-amber-50 text-amber-600' },
   ]
 
@@ -60,7 +71,8 @@ export default function DashboardHome() {
     .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? '') || new Date(b.createdAt ?? 0) - new Date(a.createdAt ?? 0))
     .slice(0, 5)
 
-  const needsSetup = !pgSettings.pgName || !pgSettings.upiId
+  const setupProperty = can('settings.manage') ? (currentProperty ? [currentProperty] : properties).find(p => !p.name || !p.upiId) : null
+  const needsSetup = !!setupProperty
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
@@ -70,7 +82,7 @@ export default function DashboardHome() {
         </h1>
         <p className="text-slate-500 text-sm mt-1">
           Here&apos;s what&apos;s happening at{' '}
-          <span className="font-medium text-slate-700">{pgSettings.pgName || 'your PG'}</span> today.
+          <span className="font-medium text-slate-700">{placeName}</span> today.
         </p>
       </div>
 
@@ -78,9 +90,20 @@ export default function DashboardHome() {
         <Link href="/dashboard/settings" className="flex items-center gap-3 bg-indigo-50 border border-indigo-100 rounded-2xl px-5 py-4 mb-6 hover:bg-indigo-100/60 transition-colors">
           <Settings size={18} className="text-indigo-600 shrink-0" />
           <p className="text-sm text-indigo-900 flex-1">
-            <span className="font-semibold">Finish setting up:</span> add your {!pgSettings.pgName ? 'PG name' : ''}{!pgSettings.pgName && !pgSettings.upiId ? ' and ' : ''}{!pgSettings.upiId ? 'UPI ID' : ''} so they appear on receipts and reminders.
+            <span className="font-semibold">Finish setting up{properties.length > 1 ? ` ${setupProperty.name}` : ''}:</span> add your {!setupProperty.name ? 'PG name' : ''}{!setupProperty.name && !setupProperty.upiId ? ' and ' : ''}{!setupProperty.upiId ? 'UPI ID' : ''} so they appear on receipts and reminders.
           </p>
           <ArrowRight size={16} className="text-indigo-600 shrink-0" />
+        </Link>
+      )}
+
+      {waiting > 0 && (
+        <Link href="/dashboard/approvals" className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 mb-6 hover:bg-amber-100/60 transition-colors">
+          <Inbox size={18} className="text-amber-600 shrink-0" />
+          <p className="text-sm text-amber-900 flex-1">
+            <span className="font-semibold">{waiting} item{waiting === 1 ? '' : 's'} waiting for you</span>
+            {approvals.counts.cash > 0 && ` · ${formatCurrencyRounded(approvals.counts.pendingCashAmount)} cash to confirm`}
+          </p>
+          <ArrowRight size={16} className="text-amber-600 shrink-0" />
         </Link>
       )}
 
@@ -97,17 +120,27 @@ export default function DashboardHome() {
         ))}
       </div>
 
-      <div className="mb-8">
+      {showMoney && (
+        <Link href="/dashboard/expenses" className="flex flex-wrap items-center gap-x-6 gap-y-2 bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-4 mb-8 hover:border-slate-200 transition-colors">
+          <span className="flex items-center gap-2 text-sm font-semibold text-slate-900"><Wallet size={16} className="text-slate-400" /> {formatMonth(currentMonth)} so far</span>
+          <span className="text-sm text-slate-500">Received <span className="font-semibold text-emerald-600">{formatCurrencyRounded(received)}</span></span>
+          <span className="text-sm text-slate-500">Spent <span className="font-semibold text-slate-900">{formatCurrencyRounded(spent)}</span></span>
+          <span className="text-sm text-slate-500">{received - spent >= 0 ? 'Profit' : 'Loss'} <span className={`font-semibold ${received - spent >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>{formatCurrencyRounded(Math.abs(received - spent))}</span></span>
+          <ArrowRight size={14} className="text-slate-400 ml-auto" />
+        </Link>
+      )}
+
+      {actions.length > 0 && <div className="mb-8">
         <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3">Quick Actions</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {quickActions.map(({ label, path, color }) => (
-            <Link key={path} href={path} className={`flex items-center justify-center gap-2 border rounded-xl px-3 py-3 text-sm font-medium transition-colors text-center ${color}`}>
+          {actions.map(({ label, path, color }) => (
+            <Link key={label} href={path} className={`flex items-center justify-center gap-2 border rounded-xl px-3 py-3 text-sm font-medium transition-colors text-center ${color}`}>
               {label}
               <ArrowRight size={14} className="shrink-0" />
             </Link>
           ))}
         </div>
-      </div>
+      </div>}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">

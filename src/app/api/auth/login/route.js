@@ -2,6 +2,7 @@ import User from '@/lib/models/User'
 import { route, readJson, json, ApiError } from '@/lib/api'
 import { signToken, setSessionCookie } from '@/lib/auth'
 import { orgActor, recordAudit } from '@/lib/audit'
+import { resolveOrgContext } from '@/lib/orgContext'
 import { rateLimit, clientIp } from '@/lib/rateLimit'
 
 export const POST = route(async ({ request }) => {
@@ -34,10 +35,15 @@ export const POST = route(async ({ request }) => {
     await recordAudit({ actor: orgActor(user), action: 'auth.login_blocked', orgId: user._id, request })
     throw new ApiError(403, 'This account has been suspended. Please contact PGBook support at hello@pgbook.in.')
   }
+  // Staff sign in only while their access is active and the PG account itself is active.
+  const ctx = await resolveOrgContext(user)
+  if (!ctx) {
+    throw new ApiError(403, "You don't have access to a PG account any more. Ask the owner to invite you again.")
+  }
 
   const now = new Date()
   await User.updateOne({ _id: user._id }, { $set: { lastLoginAt: now, lastActiveAt: now } })
-  await recordAudit({ actor: orgActor(user), action: 'auth.login', orgId: user._id, request })
+  await recordAudit({ actor: orgActor(user, ctx.role), action: 'auth.login', orgId: ctx.org._id, request })
 
   const token = await signToken({ id: user._id.toString(), tokenVersion: user.tokenVersion })
   return setSessionCookie(json({ user: user.toJSON() }), token)

@@ -1,13 +1,13 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
-import { Menu, Bell, LogOut, ChevronDown, Settings } from 'lucide-react'
+import { Menu, Bell, LogOut, ChevronDown, Settings, Building } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useAppData } from '@/context/AppContext'
 
 export default function TopBar({ onMenuClick }) {
-  const { user, logout } = useAuth()
-  const { complaints, pgSettings } = useAppData()
+  const { user, access, logout } = useAuth()
+  const { complaints, properties, selectedPropertyId, selectProperty } = useAppData()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const openComplaints = complaints.filter(c => c.status !== 'resolved').length
 
@@ -17,13 +17,30 @@ export default function TopBar({ onMenuClick }) {
   }
 
   return (
-    <header className="h-16 bg-white border-b border-slate-100 flex items-center justify-between px-5 shrink-0 z-20">
-      <div className="flex items-center gap-4">
+    <header className="h-16 bg-white border-b border-slate-100 flex items-center justify-between gap-3 px-5 shrink-0 z-20">
+      <div className="flex items-center gap-3 min-w-0">
         <button onClick={onMenuClick} aria-label="Open menu" className="lg:hidden text-slate-500 hover:text-slate-700 p-1">
           <Menu size={20} />
         </button>
-        {pgSettings.pgName && (
-          <span className="text-slate-400 text-sm hidden sm:block">{pgSettings.pgName}</span>
+        {properties.length > 1 ? (
+          <div className="relative min-w-0">
+            <Building size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <select
+              aria-label="Property"
+              value={selectedPropertyId}
+              onChange={e => selectProperty(e.target.value)}
+              className="max-w-[60vw] sm:max-w-xs appearance-none border border-slate-200 rounded-lg pl-8 pr-8 py-1.5 text-sm font-medium text-slate-800 bg-white hover:border-slate-300 focus:outline-none focus:border-indigo-500 truncate"
+            >
+              <option value="all">All properties ({properties.length})</option>
+              {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          </div>
+        ) : properties[0] && (
+          <span className="text-slate-500 text-sm font-medium hidden sm:block truncate">{properties[0].name}</span>
+        )}
+        {access && access.role !== 'owner' && (
+          <span className="hidden sm:inline text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 shrink-0">{access.roleLabel}</span>
         )}
       </div>
 

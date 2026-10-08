@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   splitAmount, calcPaymentStatus, getBalance, getTotalDue, roundMoney, isValidMonth, isValidDate,
   getPrevMonth, getNextMonth, getMonthRange, isBillableMonth, toWhatsAppNumber, isValidPhone, getPaymentEntries,
+  receivedInMonth,
 } from './helpers.js'
 import { numberToWords } from './numberToWords.js'
 import { generateReminderMessage } from './generateReminderMessage.js'
@@ -88,6 +89,18 @@ describe('numberToWords', () => {
   })
 })
 
+describe('receivedInMonth', () => {
+  it('counts money by the date it arrived, not the month it paid for', () => {
+    const payments = [
+      { id: 'a', month: '2026-09', amountPaid: 9000, transactions: [{ amount: 4000, date: '2026-09-28' }, { amount: 5000, date: '2026-10-02' }] },
+      { id: 'b', month: '2026-10', amountPaid: 10000.5, transactions: [{ amount: 10000.5, date: '2026-10-05' }] },
+      { id: 'c', month: '2026-10', amountPaid: 0, transactions: [] },
+    ]
+    expect(receivedInMonth(payments, '2026-10')).toBe(15000.5)
+    expect(receivedInMonth(payments, '2026-09')).toBe(4000)
+  })
+})
+
 describe('generateReminderMessage', () => {
   const tenant = { name: 'Ravi', room: 'A-1', rentAmount: 10000 }
   const settings = { pgName: 'Sunrise PG', upiId: 'sun@upi', rentDueDay: 5 }
@@ -96,6 +109,12 @@ describe('generateReminderMessage', () => {
     expect(msg).toContain('October 2026')
     expect(msg).toContain('₹10,000')
     expect(msg).toContain('sun@upi')
+  })
+  it('includes recurring charges before dues exist, and mentions a late fee', () => {
+    const withFood = { ...tenant, recurringCharges: [{ label: 'Food', amount: 3000 }] }
+    expect(generateReminderMessage(withFood, null, settings, 'en', '2026-10')).toContain('₹13,000')
+    const due = { month: '2026-10', rentAmount: 10000, utilityShare: 0, lateFee: 300, amountPaid: 0 }
+    expect(generateReminderMessage(tenant, due, settings, 'en')).toContain('late fee of ₹300')
   })
   it('omits the UPI line when no UPI ID is set', () => {
     const msg = generateReminderMessage(tenant, null, { pgName: 'X' }, 'en', '2026-10')

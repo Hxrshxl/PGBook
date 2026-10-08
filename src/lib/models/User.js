@@ -28,6 +28,11 @@ const userSchema = new mongoose.Schema({
   tokenVersion: { type: Number, default: 0 },
   pgSettings:   { type: pgSettingsSchema, default: () => ({}) },
 
+  // 'owner' accounts own an organization; 'staff' accounts belong to one through a Membership.
+  kind:         { type: String, enum: ['owner', 'staff'], default: 'owner' },
+  orgVersion:   { type: Number, default: 0 },    // data-model migrations applied to this organization
+  migratingAt:  { type: Date, default: null },
+
   // Account lifecycle, managed by PGBook admins
   status:       { type: String, enum: ['active', 'suspended'], default: 'active' },
   suspension:   {

@@ -15,8 +15,15 @@ const emergencySchema = new mongoose.Schema({
   relation: { type: String, default: '', trim: true, maxlength: 50 },
 }, { _id: false })
 
+const chargeSchema = new mongoose.Schema({
+  label:  { type: String, required: [true, 'Charge name is required.'], trim: true, maxlength: [40, 'Charge name is too long.'] },
+  amount: { type: Number, required: true, min: [0, 'Charge cannot be negative.'], max: [1000000, 'Charge is too large.'] },
+}, { _id: false })
+
 const tenantSchema = new mongoose.Schema({
-  userId:           { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User', index: true },
+  userId:           { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User', index: true }, // the organization (owner account)
+  propertyId:       { type: mongoose.Schema.Types.ObjectId, ref: 'Property', default: null },
+  roomId:           { type: mongoose.Schema.Types.ObjectId, ref: 'Room', default: null },
   name:             { type: String, required: [true, 'Tenant name is required.'], trim: true, maxlength: [100, 'Name is too long.'] },
   phone:            {
     type: String, required: [true, 'Phone number is required.'], trim: true,
@@ -36,13 +43,18 @@ const tenantSchema = new mongoose.Schema({
   idNumber:         { type: String, default: '', trim: true, maxlength: 50 },
   emergencyContact: { type: emergencySchema, default: () => ({}) },
   notes:            { type: String, default: '', trim: true, maxlength: [1000, 'Notes are too long.'] },
+  // Charged every month on top of rent, e.g. food or laundry
+  recurringCharges: { type: [chargeSchema], default: [], validate: { validator: v => v.length <= 10, message: 'At most 10 recurring charges.' } },
 }, { timestamps: true })
 
 tenantSchema.index({ userId: 1, status: 1 })
+tenantSchema.index({ roomId: 1, status: 1 })
 
 tenantSchema.set('toJSON', {
   transform: (_, ret) => {
     ret.id = ret._id.toString()
+    ret.propertyId = ret.propertyId?.toString() ?? null
+    ret.roomId = ret.roomId?.toString() ?? null
     delete ret._id
     delete ret.__v
     delete ret.userId

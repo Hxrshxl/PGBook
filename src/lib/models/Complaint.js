@@ -7,6 +7,7 @@ export const COMPLAINT_PRIORITIES = ['high', 'medium', 'low']
 const complaintSchema = new mongoose.Schema({
   userId:      { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User', index: true },
   tenantId:    { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Tenant' },
+  propertyId:  { type: mongoose.Schema.Types.ObjectId, ref: 'Property', default: null },
   tenantName:  { type: String, default: '' },
   room:        { type: String, default: '' },
   category:    { type: String, enum: { values: COMPLAINT_CATEGORIES, message: 'Unknown category.' }, default: 'other' },
@@ -21,6 +22,7 @@ complaintSchema.set('toJSON', {
   transform: (_, ret) => {
     ret.id = ret._id.toString()
     ret.tenantId = ret.tenantId?.toString()
+    ret.propertyId = ret.propertyId?.toString() ?? null
     delete ret._id
     delete ret.__v
     delete ret.userId

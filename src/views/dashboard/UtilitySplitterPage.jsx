@@ -21,7 +21,7 @@ const TYPE_COLORS = {
 }
 
 export default function UtilitySplitterPage() {
-  const { tenants, utilityBills, addUtilityBill, deleteUtilityBill } = useAppData()
+  const { tenants, utilityBills, properties, selectedPropertyId, addUtilityBill, deleteUtilityBill } = useAppData()
   const { showToast } = useToast()
   const [month, setMonth] = useState(getCurrentMonth)
   const [addOpen, setAddOpen] = useState(false)
@@ -111,7 +111,7 @@ export default function UtilitySplitterPage() {
       )}
 
       <Modal isOpen={addOpen} onClose={() => setAddOpen(false)} title="Add Utility Bill" maxWidth="max-w-lg">
-        <AddBillModal tenants={tenants} defaultMonth={month} onSubmit={handleAdd} onClose={() => setAddOpen(false)} />
+        <AddBillModal tenants={tenants} properties={properties} defaultPropertyId={selectedPropertyId !== 'all' ? selectedPropertyId : undefined} defaultMonth={month} onSubmit={handleAdd} onClose={() => setAddOpen(false)} />
       </Modal>
 
       <ConfirmDialog

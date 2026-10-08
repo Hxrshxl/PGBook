@@ -8,7 +8,7 @@ import { useToast } from '@/context/ToastContext'
 import { describeEvent, deviceLabel } from '@/utils/auditText'
 import Spinner from '@/components/ui/Spinner'
 import Pill from '@/components/admin/Pill'
-import ReasonDialog from '@/components/admin/ReasonDialog'
+import ReasonDialog from '@/components/ui/ReasonDialog'
 import { dateTime, planState, relative } from '@/components/admin/format'
 import { formatDate } from '@/utils/helpers'
 

@@ -5,6 +5,7 @@ import User from './models/User'
 import { clearSessionCookie, getTokenFromRequest, verifyToken } from './auth'
 import { can } from './policy'
 import { orgActor, recordAudit } from './audit'
+import { makeScope, resolveOrgContext } from './orgContext'
 
 // Time zone used for "today" on the server (rent months, vacate dates, receipts).
 export const APP_TIME_ZONE = process.env.APP_TIME_ZONE || 'Asia/Kolkata'
@@ -22,11 +23,16 @@ export function json(data, status = 200) {
 }
 
 /**
- * Wraps an owner-facing route handler with DB connection, authentication,
- * permission checks, CSRF protection and uniform error responses.
+ * Wraps an owner/staff-facing route handler with DB connection, authentication,
+ * organization context, permission checks, CSRF protection and uniform errors.
  *
- * The handler receives { request, params, user, actor, audit }, where
- * audit(action, { target, details, reason }) records an event in the owner's activity log.
+ * The handler receives:
+ *   user   — the person signed in (owner or staff member)
+ *   org    — the owner account whose data this is (same as user for owners)
+ *   role   — 'owner' | 'manager' | 'accountant' | 'caretaker'
+ *   scope  — query helpers limited to this organization and the properties the user may access
+ *   actor  — who is acting, for permission checks and the audit log
+ *   audit(action, { target, details, reason }) — records an event in the organization's activity log
  */
 export function route(handler, { auth = true, permission } = {}) {
   return async (request, context) => {
@@ -34,20 +40,23 @@ export function route(handler, { auth = true, permission } = {}) {
       if (!['GET', 'HEAD'].includes(request.method)) assertSameOrigin(request)
       await dbConnect()
       const params = (await context?.params) ?? {}
-      let user = null
-      let actor = null
-      if (auth) {
-        user = await authenticate(request)
-        if (!user) {
-          // Clear a stale cookie (password changed elsewhere, account suspended…), otherwise
-          // the middleware would keep treating the browser as signed in.
-          return clearSessionCookie(json({ message: 'Your session has expired. Please sign in again.' }, 401))
-        }
-        actor = orgActor(user)
-        if (permission && !can(actor, permission)) throw new ApiError(403, 'You do not have permission to do that.')
+      if (!auth) {
+        const audit = (action, extra = {}) => recordAudit({ action, request, ...extra })
+        return await handler({ request, params, audit })
       }
-      const audit = (action, extra = {}) => recordAudit({ actor, action, orgId: user?._id ?? null, request, ...extra })
-      return await handler({ request, params, user, actor, audit })
+
+      const user = await authenticate(request)
+      const ctx = user ? await resolveOrgContext(user) : null
+      if (!ctx) {
+        // Clear a stale cookie (password changed elsewhere, account suspended, staff access removed…),
+        // otherwise the middleware would keep treating the browser as signed in.
+        return clearSessionCookie(json({ message: 'Your session has expired. Please sign in again.' }, 401))
+      }
+      const actor = { ...orgActor(user), role: ctx.role, orgId: ctx.org._id }
+      if (permission && !can(actor, permission)) throw new ApiError(403, 'Your role does not allow this.')
+      const scope = makeScope(ctx)
+      const audit = (action, extra = {}) => recordAudit({ actor: orgActor(user, ctx.role), action, orgId: ctx.org._id, request, ...extra })
+      return await handler({ request, params, user, org: ctx.org, role: ctx.role, membership: ctx.membership, scope, actor, audit })
     } catch (err) {
       return errorResponse(err)
     }

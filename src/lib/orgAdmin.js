@@ -9,11 +9,11 @@ import { ADMIN_ROLES, maxTrialExtension } from './policy'
 export async function findOrg(id) {
   if (!mongoose.isValidObjectId(id)) throw new ApiError(404, 'Owner account not found.')
   const user = await User.findById(id)
-  if (!user) throw new ApiError(404, 'Owner account not found.')
+  if (!user || user.kind === 'staff') throw new ApiError(404, 'Owner account not found.')
   return user
 }
 
-const orgTarget = user => ({ kind: 'org', id: user._id.toString(), label: `${user.name} · ${user.pgSettings?.pgName || user.email}` })
+const orgTarget = user => ({ kind: 'org', id: user._id.toString(), label: `${user.name} · ${user.email}` })
 
 function requireReason(reason) {
   if (typeof reason !== 'string' || reason.trim().length < 3) throw new ApiError(400, 'Please give a reason (it is kept in the audit log).')

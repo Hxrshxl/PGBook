@@ -2,10 +2,12 @@
 import Link from 'next/link'
 import { Pencil, LogOut, History, Phone, RotateCcw, Trash2 } from 'lucide-react'
 import Badge from '@/components/ui/Badge'
-import { formatCurrency, formatDate } from '@/utils/helpers'
+import { chargesTotal, formatCurrency, formatDate } from '@/utils/helpers'
 
-export default function TenantCard({ tenant, onEdit, onVacate, onReactivate, onDelete }) {
+// Action handlers are optional: a button only shows when the role may use it.
+export default function TenantCard({ tenant, propertyName, onEdit, onVacate, onReactivate, onDelete }) {
   const { name, room, rentAmount, depositAmount, status, moveInDate, moveOutDate, phone } = tenant
+  const charges = tenant.recurringCharges ?? []
   const btn = 'flex-1 flex items-center justify-center gap-1.5 text-xs text-slate-500 py-1.5 rounded-lg transition-colors'
 
   return (
@@ -17,7 +19,7 @@ export default function TenantCard({ tenant, onEdit, onVacate, onReactivate, onD
           </div>
           <div className="min-w-0">
             <p className="text-slate-900 font-semibold text-sm truncate">{name}</p>
-            <p className="text-slate-400 text-xs mt-0.5">Room {room}</p>
+            <p className="text-slate-400 text-xs mt-0.5 truncate">Room {room}{propertyName && ` · ${propertyName}`}</p>
           </div>
         </div>
         <Badge status={status} />
@@ -26,8 +28,13 @@ export default function TenantCard({ tenant, onEdit, onVacate, onReactivate, onD
       <div className="space-y-1.5 text-xs text-slate-500 mb-4">
         <div className="flex items-center justify-between">
           <span>Monthly rent</span>
-          <span className="font-semibold text-slate-900 text-sm">{formatCurrency(rentAmount)}</span>
+          <span className="font-semibold text-slate-900 text-sm">{formatCurrency(rentAmount + chargesTotal(charges))}</span>
         </div>
+        {charges.length > 0 && (
+          <p className="text-right text-[11px] text-slate-400 -mt-1">
+            Rent {formatCurrency(rentAmount)} + {charges.map(c => `${c.label} ${formatCurrency(c.amount)}`).join(' + ')}
+          </p>
+        )}
         {depositAmount > 0 && (
           <div className="flex items-center justify-between">
             <span>Deposit</span>
@@ -49,21 +56,27 @@ export default function TenantCard({ tenant, onEdit, onVacate, onReactivate, onD
         <Link href={`/dashboard/history?tenantId=${tenant.id}`} className={`${btn} hover:text-indigo-600 hover:bg-indigo-50`}>
           <History size={13} /> History
         </Link>
-        <button onClick={() => onEdit(tenant)} className={`${btn} hover:text-blue-600 hover:bg-blue-50`}>
-          <Pencil size={13} /> Edit
-        </button>
-        {status === 'active' ? (
+        {onEdit && (
+          <button onClick={() => onEdit(tenant)} className={`${btn} hover:text-blue-600 hover:bg-blue-50`}>
+            <Pencil size={13} /> Edit
+          </button>
+        )}
+        {status === 'active' ? onVacate && (
           <button onClick={() => onVacate(tenant)} className={`${btn} hover:text-amber-700 hover:bg-amber-50`}>
             <LogOut size={13} /> Vacate
           </button>
         ) : (
           <>
-            <button onClick={() => onReactivate(tenant)} className={`${btn} hover:text-emerald-700 hover:bg-emerald-50`}>
-              <RotateCcw size={13} /> Restore
-            </button>
-            <button onClick={() => onDelete(tenant)} aria-label={`Delete ${name}`} className={`${btn} hover:text-red-600 hover:bg-red-50`}>
-              <Trash2 size={13} /> Delete
-            </button>
+            {onReactivate && (
+              <button onClick={() => onReactivate(tenant)} className={`${btn} hover:text-emerald-700 hover:bg-emerald-50`}>
+                <RotateCcw size={13} /> Restore
+              </button>
+            )}
+            {onDelete && (
+              <button onClick={() => onDelete(tenant)} aria-label={`Delete ${name}`} className={`${btn} hover:text-red-600 hover:bg-red-50`}>
+                <Trash2 size={13} /> Delete
+              </button>
+            )}
           </>
         )}
       </div>

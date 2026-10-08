@@ -24,7 +24,8 @@ export default function ReceiptTemplate({ tenant, payment, pgSettings, receiptNu
           <div style={{ fontSize: '22px', fontWeight: 700, color: '#4f46e5' }}>{brand}</div>
           <div style={{ ...muted, fontSize: '12px', marginTop: '4px', lineHeight: 1.6 }}>
             {pgSettings.address && <>{pgSettings.address}<br /></>}
-            {pgSettings.phone && <>Phone: {pgSettings.phone}</>}
+            {pgSettings.phone && <>Phone: {pgSettings.phone}<br /></>}
+            {pgSettings.gstin && <>GSTIN: {pgSettings.gstin}</>}
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
@@ -56,11 +57,25 @@ export default function ReceiptTemplate({ tenant, payment, pgSettings, receiptNu
             <td style={{ ...cell, ...muted }}>{formatMonth(payment.month)}</td>
             <td style={{ ...cell, textAlign: 'right', fontWeight: 600 }}>{rupees(payment.rentAmount)}</td>
           </tr>
+          {(payment.extraCharges ?? []).map((c, i) => (
+            <tr key={i} style={{ borderBottom: '1px solid #e2e8f0' }}>
+              <td style={cell}>{c.label}</td>
+              <td style={{ ...cell, ...muted }}>{formatMonth(payment.month)}</td>
+              <td style={{ ...cell, textAlign: 'right', fontWeight: 600 }}>{rupees(c.amount)}</td>
+            </tr>
+          ))}
           {(payment.utilityShare ?? 0) > 0 && (
             <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
               <td style={cell}>Utility share</td>
               <td style={{ ...cell, ...muted }}>{formatMonth(payment.month)}</td>
               <td style={{ ...cell, textAlign: 'right', fontWeight: 600 }}>{rupees(payment.utilityShare)}</td>
+            </tr>
+          )}
+          {(payment.lateFee ?? 0) > 0 && (
+            <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+              <td style={cell}>Late payment fee</td>
+              <td style={{ ...cell, ...muted }}>{formatMonth(payment.month)}</td>
+              <td style={{ ...cell, textAlign: 'right', fontWeight: 600 }}>{rupees(payment.lateFee)}</td>
             </tr>
           )}
           <tr>

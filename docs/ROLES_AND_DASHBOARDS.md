@@ -1,6 +1,6 @@
 # PGBook — Roles, Permissions & Dashboards Design
 
-Status: **Phase 1 built** (see §14); later phases are a design proposal · Covers: SuperAdmin (platform), PG Owner (+ staff), Tenant
+Status: **Phases 1 and 3 built** (see §14); other phases are a design proposal · Covers: SuperAdmin (platform), PG Owner (+ staff), Tenant
 Numbers in wireframes are illustrative.
 
 ---
@@ -603,7 +603,7 @@ Super Admin A invites, choosing role and reason → Super Admin B approves → i
 | --- | --- | --- |
 | **1. Foundation + SuperAdmin core** ✅ *built* | Policy layer, AuditEvent, ApprovalRequest, admin realm with mandatory 2FA, Command Center (from existing data), Owners list/detail, suspend/reactivate/force-logout/extend-trial, Audit Log, Admin Team. Owner gets an Activity page. | L |
 | **2. Plans & billing** | Subscription model, trial lifecycle, plan limits, Razorpay subscriptions, GST invoices, dunning, read-only mode, export + 90-day retention, admin Revenue screens | L |
-| **3. Properties & team** | Property/Room/Bed migration, property switcher, staff invites and roles, owner Approvals inbox, cash handover, expenses, late fees, food charges | L |
+| **3. Properties & team** ✅ *built* | Property and Room models (beds are a room's capacity rather than separate records) with a lazy, per-account migration of old single-PG accounts; property switcher; staff invites (single-use link, 7 days), Manager / Accountant / Caretaker roles with per-property access; owner Approvals inbox (dues changes, payment removal); cash handover; expenses with profit & loss; late-fee rules; recurring charges such as food. Manager direct-change limit: ₹1,000 per month's dues. | L |
 | **4. Resident portal** | Phone OTP realm, invites and join links, payment claims, tenant complaints with photos, receipts download, notices, requests, move-out and deposit settlement | XL |
 | **5. Compliance & scale** | DPDP request tooling, consent versions, support sessions with consent, break-glass, announcements, feature flags, Trust & Safety signals, WhatsApp Business API automation | L |
 
@@ -613,10 +613,10 @@ Phase 1 is buildable right now with no external accounts. Phases 2 and 4 need pr
 
 ## 15. Decisions needed
 
-1. **Multi-property now or later?** The Multi-PG plan is already advertised; recommended in Phase 3.
+1. ~~**Multi-property now or later?**~~ Built in Phase 3.
 2. **Tenant login:** phone OTP needs an SMS/WhatsApp provider (e.g. MSG91, Gupshup, Twilio). Recommended: WhatsApp OTP with SMS fallback.
 3. **Rent payments:** keep UPI-direct to owner (recommended) vs collecting through PGBook (regulatory burden).
 4. **Subscription billing provider and GST registration** (Razorpay Subscriptions is the usual choice in India).
-5. **Staff roles at launch:** all three, or Manager only first?
+5. ~~**Staff roles at launch?**~~ All three built in Phase 3.
 6. **Thresholds:** refund approval limit (₹5,000 proposed), manager waiver limit, notice period default, complaint SLAs.
 7. **Legal:** privacy policy, terms, DPA with owners, retention periods — needs counsel before tenant data flows through a resident portal.

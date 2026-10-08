@@ -1,7 +1,8 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { AlertCircle, RefreshCw } from 'lucide-react'
+import { AlertCircle, Lock, RefreshCw } from 'lucide-react'
+import { capabilityFor } from '@/utils/dashboardRoutes'
 import { useAuth } from '@/context/AuthContext'
 import { AppProvider, useAppData } from '@/context/AppContext'
 import Sidebar from '@/components/layout/Sidebar'
@@ -20,6 +21,20 @@ function FullScreenSpinner() {
 // instead of flashing "no tenants" empty states.
 function DataGate({ children }) {
   const { loading, error, reload } = useAppData()
+  const { can, access } = useAuth()
+  const pathname = usePathname()
+  const needed = capabilityFor(pathname)
+  if (needed && !can(needed)) {
+    return (
+      <div className="flex flex-col items-center justify-center text-center py-24 px-6">
+        <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+          <Lock size={22} className="text-slate-500" />
+        </div>
+        <h2 className="text-slate-900 font-semibold mb-1">Not available for your role</h2>
+        <p className="text-slate-500 text-sm max-w-sm">As {access?.roleLabel ?? 'a team member'}, you don&apos;t have access to this page. Ask the owner if you need it.</p>
+      </div>
+    )
+  }
   if (loading) return <FullScreenSpinner />
   if (error) {
     return (

@@ -8,6 +8,9 @@ import { recordAudit } from './audit'
 import { ADMIN_ROLES, can } from './policy'
 import { createToken } from './secretBox'
 import { findOrg, reactivateOrg, suspendOrg } from './orgAdmin'
+import Tenant from './models/Tenant.js'
+import { adjustDues, duesChanges, orgPayment, removePaymentEntry } from './duesOps.js'
+import { formatCurrency, formatDate, formatMonth, getTotalDue, PAYMENT_METHOD_LABELS } from '../utils/helpers.js'
 
 export const INVITE_TTL_MS = 72 * 60 * 60 * 1000
 
@@ -159,7 +162,7 @@ export const APPROVAL_TYPES = {
     async prepare({ orgId }) {
       const user = await findOrg(orgId)
       if (user.status === 'suspended') throw new ApiError(409, 'This account is already suspended.')
-      return { payload: { orgId: user._id.toString() }, summary: `Suspend ${user.name} (${user.pgSettings?.pgName || user.email})`, orgId: user._id, key: user._id.toString() }
+      return { payload: { orgId: user._id.toString() }, summary: `Suspend ${user.name} (${user.email})`, orgId: user._id, key: user._id.toString() }
     },
     async execute({ orgId }, { approval, actor, request }) {
       await suspendOrg(await findOrg(orgId), { reason: `${approval.reason} (requested by ${approval.requestedBy.name})`, actor, request })
@@ -174,13 +177,77 @@ export const APPROVAL_TYPES = {
     async prepare({ orgId }) {
       const user = await findOrg(orgId)
       if (user.status !== 'suspended') throw new ApiError(409, 'This account is not suspended.')
-      return { payload: { orgId: user._id.toString() }, summary: `Reactivate ${user.name} (${user.pgSettings?.pgName || user.email})`, orgId: user._id, key: user._id.toString() }
+      return { payload: { orgId: user._id.toString() }, summary: `Reactivate ${user.name} (${user.email})`, orgId: user._id, key: user._id.toString() }
     },
     async execute({ orgId }, { approval, actor, request }) {
       await reactivateOrg(await findOrg(orgId), { reason: `${approval.reason} (requested by ${approval.requestedBy.name})`, actor, request })
       return {}
     },
   },
+
+  // ── Organization approvals: staff ask, the owner decides ──
+
+  'org.dues.adjust': {
+    realm: 'org',
+    label: "Change a month's dues",
+    canRequest: actor => can(actor, 'rent.adjust') || can(actor, 'rent.requestAdjust'),
+    canApprove: actor => can(actor, 'approvals.decide'),
+    async prepare({ paymentId, changes }, actor) {
+      const payment = await orgPayment(actor.orgId, paymentId)
+      const clean = duesChanges(changes)
+      const tenant = await Tenant.findById(payment.tenantId).select('name')
+      const parts = []
+      if (clean.rentAmount !== undefined && clean.rentAmount !== payment.rentAmount) parts.push(`rent ${formatCurrency(payment.rentAmount)} → ${formatCurrency(clean.rentAmount)}`)
+      if (clean.lateFee !== undefined && clean.lateFee !== (payment.lateFee ?? 0)) parts.push(`late fee ${formatCurrency(payment.lateFee ?? 0)} → ${formatCurrency(clean.lateFee)}`)
+      if (clean.notes !== undefined && clean.notes !== payment.notes) parts.push('notes')
+      if (!parts.length) throw new ApiError(400, 'Nothing to change.')
+      if (getTotalDue({ ...payment.toObject(), ...clean }) < payment.amountPaid) {
+        throw new ApiError(400, `Total due cannot be less than the ${formatCurrency(payment.amountPaid)} already paid.`)
+      }
+      return {
+        payload: { paymentId: payment._id.toString(), changes: clean },
+        summary: `${tenant?.name ?? 'Tenant'} — ${formatMonth(payment.month)}: ${parts.join(', ')}`,
+        orgId: actor.orgId,
+        key: `dues:${payment._id}`,
+      }
+    },
+    async execute({ paymentId, changes }, { approval, actor, request }) {
+      await adjustDues(await orgPayment(approval.orgId, paymentId), changes, { actor, request, orgId: approval.orgId, approval })
+      return {}
+    },
+  },
+
+  'org.payment.removeEntry': {
+    realm: 'org',
+    label: 'Remove a payment entry',
+    canRequest: actor => can(actor, 'rent.requestRemoveEntry'),
+    canApprove: actor => can(actor, 'approvals.decide'),
+    async prepare({ paymentId, txId }, actor) {
+      const payment = await orgPayment(actor.orgId, paymentId)
+      const tx = payment.transactions.id(txId)
+      if (!tx) throw new ApiError(404, 'Payment entry not found.')
+      const tenant = await Tenant.findById(payment.tenantId).select('name')
+      return {
+        payload: { paymentId: payment._id.toString(), txId: String(txId) },
+        summary: `Remove ${formatCurrency(tx.amount)} (${PAYMENT_METHOD_LABELS[tx.method] ?? tx.method}, ${formatDate(tx.date)}) from ${tenant?.name ?? 'tenant'} — ${formatMonth(payment.month)}`,
+        orgId: actor.orgId,
+        key: `tx:${txId}`,
+      }
+    },
+    async execute({ paymentId, txId }, { approval, actor, request }) {
+      await removePaymentEntry(await orgPayment(approval.orgId, paymentId), txId, { actor, request, orgId: approval.orgId, approval })
+      return {}
+    },
+  },
+}
+
+const realmOf = def => def.realm ?? 'admin'
+
+/** Approvals never cross realms or organizations: owners decide only their own staff's requests. */
+function sameRealm(def, approvalOrgId, actor) {
+  if (realmOf(def) !== actor.realm) return false
+  if (realmOf(def) === 'org') return !!actor.orgId && String(actor.orgId) === String(approvalOrgId)
+  return true
 }
 
 function definition(type) {
@@ -195,7 +262,7 @@ export async function expireStaleApprovals() {
 
 export async function createApproval({ type, payload, reason, actor, request }) {
   const def = definition(type)
-  if (!def.canRequest(actor)) throw new ApiError(403, 'Your role cannot request this.')
+  if (realmOf(def) !== actor.realm || !def.canRequest(actor)) throw new ApiError(403, 'Your role cannot request this.')
   if (typeof reason !== 'string' || reason.trim().length < 3) throw new ApiError(400, 'Please give a reason for the approver.')
   await expireStaleApprovals()
   const prepared = await def.prepare(payload ?? {}, actor)
@@ -210,6 +277,7 @@ export async function createApproval({ type, payload, reason, actor, request }) 
     reason: reason.trim(),
     requestedBy: { realm: actor.realm, id: actor.id, name: actor.name, role: actor.role },
     orgId: prepared.orgId ?? null,
+    realm: realmOf(def),
   })
   await recordAudit({
     actor, action: 'approval.requested', orgId: approval.orgId, request, reason: approval.reason,
@@ -224,8 +292,9 @@ export async function decideApproval({ id, decision, note = '', actor, request }
   const approval = await ApprovalRequest.findById(id)
   if (!approval) throw new ApiError(404, 'Request not found.')
   if (approval.status !== 'pending') throw new ApiError(409, `This request is already ${approval.status}.`)
-  if (approval.requestedBy.id.toString() === actor.id.toString()) throw new ApiError(403, "You can't decide your own request — another admin must.")
   const def = definition(approval.type)
+  if (!sameRealm(def, approval.orgId, actor)) throw new ApiError(404, 'Request not found.')
+  if (approval.requestedBy.id.toString() === actor.id.toString()) throw new ApiError(403, "You can't decide your own request — someone else must.")
   if (!def.canApprove(actor)) throw new ApiError(403, 'Your role cannot approve this type of request.')
   if (!['approve', 'reject'].includes(decision)) throw new ApiError(400, 'Decision must be approve or reject.')
   if (decision === 'reject' && String(note).trim().length < 3) throw new ApiError(400, 'Please say why you are rejecting it.')
@@ -278,8 +347,11 @@ export function approvalView(approval, actor) {
   const json = approval.toJSON()
   const def = APPROVAL_TYPES[json.type]
   json.typeLabel = def?.label ?? json.type
-  json.canDecide = json.status === 'pending' && json.requestedBy.id !== actor.id.toString() && !!def?.canApprove(actor)
+  json.canDecide = json.status === 'pending' && json.requestedBy.id !== actor.id.toString() && !!def && sameRealm(def, json.orgId, actor) && def.canApprove(actor)
   json.canCancel = json.status === 'pending' && json.requestedBy.id === actor.id.toString()
   delete json.payload?.key
   return json
 }
+
+/** Filter for the admin console: only platform approvals, never owners' internal staff approvals. */
+export const ADMIN_REALM = { realm: { $ne: 'org' } }

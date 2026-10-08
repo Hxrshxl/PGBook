@@ -1,4 +1,4 @@
-import { formatMonth, getBalance, getTotalDue } from './helpers.js'
+import { chargesTotal, formatMonth, getBalance, getTotalDue } from './helpers.js'
 
 function dueDateText(month, rentDueDay, lang) {
   if (!rentDueDay || !month) return ''
@@ -13,8 +13,10 @@ function dueDateText(month, rentDueDay, lang) {
  */
 export function generateReminderMessage(tenant, payment, pgSettings, lang = 'en', month = payment?.month) {
   const monthLabel = formatMonth(payment?.month ?? month)
-  const due = payment ? getBalance(payment) : tenant.rentAmount
-  const total = payment ? getTotalDue(payment) : tenant.rentAmount
+  const monthly = tenant.rentAmount + chargesTotal(tenant.recurringCharges)
+  const due = payment ? getBalance(payment) : monthly
+  const total = payment ? getTotalDue(payment) : monthly
+  const late = payment?.lateFee > 0 ? payment.lateFee : 0
   const partial = payment && payment.amountPaid > 0
   const pg = pgSettings.pgName || pgSettings.logoText || 'Your PG'
   const rupees = n => '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 })
@@ -25,7 +27,7 @@ export function generateReminderMessage(tenant, payment, pgSettings, lang = 'en'
     return `नमस्ते ${tenant.name} जी 🙏
 
 आपके कमरे *${tenant.room}* का *${monthLabel}* महीने का किराया${partial ? ` (${rupees(total)} में से ${rupees(due)} बाकी है)` : ` ${rupees(due)} अभी बाकी है`}।
-${dueLine}${upiLine}
+${late ? `\n⏰ इसमें ${rupees(late)} लेट फीस शामिल है।` : ''}${dueLine}${upiLine}
 
 कोई दिक्कत हो तो बताइए।
 
@@ -37,7 +39,7 @@ ${dueLine}${upiLine}
   return `Hi ${tenant.name} 👋
 
 This is a gentle reminder that your rent for *Room ${tenant.room}* — *${monthLabel}* is${partial ? ` partially pending. Amount due: *${rupees(due)}* (of ${rupees(total)} total)` : ` due: *${rupees(due)}*`}.
-${dueLine}${upiLine}
+${late ? `\n⏰ Includes a late fee of ${rupees(late)}.` : ''}${dueLine}${upiLine}
 
 Let us know if you have any questions.
 

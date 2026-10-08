@@ -14,6 +14,7 @@ const actorSchema = new mongoose.Schema({
 // The payload is re-validated when it executes, so a stale approval can't apply to changed data.
 const approvalRequestSchema = new mongoose.Schema({
   type:         { type: String, required: true },
+  realm:        { type: String, enum: ['admin', 'org'], default: 'admin' }, // org = an owner approving their staff
   payload:      { type: mongoose.Schema.Types.Mixed, default: {} },
   summary:      { type: String, required: true },
   reason:       { type: String, required: [true, 'A reason is required.'], trim: true, minlength: [3, 'Please give a reason.'], maxlength: 1000 },
