@@ -1,21 +1,50 @@
-import { NextResponse } from 'next/server'
-import dbConnect from '@/lib/db'
 import User from '@/lib/models/User'
-import { signToken } from '@/lib/auth'
+import { route, readJson, json, ApiError } from '@/lib/api'
+import { signToken, setSessionCookie } from '@/lib/auth'
+import { orgActor, recordAudit } from '@/lib/audit'
+import { resolveOrgContext } from '@/lib/orgContext'
+import { rateLimit, clientIp } from '@/lib/rateLimit'
 
-export async function POST(request) {
-  await dbConnect()
-  const { email, password } = await request.json()
+export const POST = route(async ({ request }) => {
+  const { email, password } = await readJson(request)
+  if (typeof email !== 'string' || typeof password !== 'string' || !email.trim() || !password) {
+    throw new ApiError(400, 'Email and password are required.')
+  }
+  const normalizedEmail = email.toLowerCase().trim()
 
-  const user = await User.findOne({ email: email?.toLowerCase().trim() })
-  if (!user) return NextResponse.json({ message: 'Invalid email or password.' }, { status: 401 })
+  const ip = clientIp(request)
+  const limits = [
+    rateLimit(`login:ip:${ip}`, { limit: 30, windowMs: 15 * 60 * 1000 }),
+    rateLimit(`login:email:${normalizedEmail}`, { limit: 10, windowMs: 15 * 60 * 1000 }),
+  ]
+  const blocked = limits.find(l => !l.ok)
+  if (blocked) {
+    throw new ApiError(429, `Too many sign-in attempts. Try again in ${Math.ceil(blocked.retryAfter / 60)} minute(s).`)
+  }
 
-  const match = await user.comparePassword(password)
-  if (!match) return NextResponse.json({ message: 'Invalid email or password.' }, { status: 401 })
+  const user = await User.findOne({ email: normalizedEmail }).select('+password')
+  const valid = user && (await user.comparePassword(password))
+  if (!valid) {
+    if (user) {
+      await recordAudit({ actor: { realm: 'org', id: null, name: 'Unknown', role: 'anonymous' }, action: 'auth.login_failed', orgId: user._id, request })
+    }
+    throw new ApiError(401, 'Invalid email or password.')
+  }
+  // Only revealed after a correct password, so it can't be used to probe which accounts exist.
+  if (user.status === 'suspended') {
+    await recordAudit({ actor: orgActor(user), action: 'auth.login_blocked', orgId: user._id, request })
+    throw new ApiError(403, 'This account has been suspended. Please contact PGBook support at hello@pgbook.in.')
+  }
+  // Staff sign in only while their access is active and the PG account itself is active.
+  const ctx = await resolveOrgContext(user)
+  if (!ctx) {
+    throw new ApiError(403, "You don't have access to a PG account any more. Ask the owner to invite you again.")
+  }
 
-  const payload = { id: user._id.toString(), email: user.email }
-  const token = signToken(payload)
-  const userJson = user.toJSON()
+  const now = new Date()
+  await User.updateOne({ _id: user._id }, { $set: { lastLoginAt: now, lastActiveAt: now } })
+  await recordAudit({ actor: orgActor(user, ctx.role), action: 'auth.login', orgId: ctx.org._id, request })
 
-  return NextResponse.json({ token, user: userJson })
-}
+  const token = await signToken({ id: user._id.toString(), tokenVersion: user.tokenVersion })
+  return setSessionCookie(json({ user: user.toJSON() }), token)
+}, { auth: false })

@@ -1,31 +1,38 @@
-import { NextResponse } from 'next/server'
-import dbConnect from '@/lib/db'
-import User from '@/lib/models/User'
-import { signToken } from '@/lib/auth'
+import User, { PASSWORD_MIN_LENGTH } from '@/lib/models/User'
+import { route, readJson, json, ApiError } from '@/lib/api'
+import { signToken, setSessionCookie } from '@/lib/auth'
+import { orgActor, recordAudit } from '@/lib/audit'
+import { rateLimit, clientIp } from '@/lib/rateLimit'
 
-export async function POST(request) {
-  await dbConnect()
-  const { name, pgName, email, password } = await request.json()
+export const POST = route(async ({ request }) => {
+  const limit = rateLimit(`signup:ip:${clientIp(request)}`, { limit: 10, windowMs: 60 * 60 * 1000 })
+  if (!limit.ok) throw new ApiError(429, 'Too many sign-up attempts. Please try again later.')
 
-  if (!name || !email || !password) {
-    return NextResponse.json({ message: 'Name, email, and password are required.' }, { status: 400 })
+  const { name, pgName, email, password } = await readJson(request)
+  if (typeof name !== 'string' || typeof email !== 'string' || typeof password !== 'string' || !name.trim() || !email.trim()) {
+    throw new ApiError(400, 'Name, email, and password are required.')
+  }
+  if (password.length < PASSWORD_MIN_LENGTH) {
+    throw new ApiError(400, `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`)
+  }
+  if (password.length > 128) throw new ApiError(400, 'Password is too long.')
+
+  const normalizedEmail = email.toLowerCase().trim()
+  if (await User.exists({ email: normalizedEmail })) {
+    throw new ApiError(409, 'An account with this email already exists.')
   }
 
-  const existing = await User.findOne({ email: email.toLowerCase().trim() })
-  if (existing) return NextResponse.json({ message: 'An account with this email already exists.' }, { status: 409 })
-
+  const pg = typeof pgName === 'string' ? pgName.trim() : ''
   const user = await User.create({
     name: name.trim(),
-    email: email.toLowerCase().trim(),
+    email: normalizedEmail,
     password,
-    pgName: pgName?.trim() ?? '',
-    pgSettings: {
-      pgName:    pgName?.trim() ?? '',
-      ownerName: name.trim(),
-      logoText:  pgName?.trim() || 'PGBook',
-    },
+    pgSettings: { pgName: pg, ownerName: name.trim(), logoText: pg },
+    lastLoginAt: new Date(),
+    lastActiveAt: new Date(),
   })
+  await recordAudit({ actor: orgActor(user), action: 'org.signup', orgId: user._id, target: { kind: 'org', id: user._id.toString(), label: pg || user.name }, request })
 
-  const token = signToken({ id: user._id.toString(), email: user.email })
-  return NextResponse.json({ token, user: user.toJSON() }, { status: 201 })
-}
+  const token = await signToken({ id: user._id.toString(), tokenVersion: user.tokenVersion })
+  return setSessionCookie(json({ user: user.toJSON() }, 201), token)
+}, { auth: false })

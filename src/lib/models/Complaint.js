@@ -1,23 +1,41 @@
 import mongoose from 'mongoose'
 
+export const COMPLAINT_CATEGORIES = ['plumbing', 'electrical', 'wifi', 'furniture', 'cleaning', 'security', 'noise', 'other']
+export const COMPLAINT_STATUSES = ['open', 'in-progress', 'resolved']
+export const COMPLAINT_PRIORITIES = ['high', 'medium', 'low']
+
 const complaintSchema = new mongoose.Schema({
-  userId:     { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User', index: true },
-  tenantId:   { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Tenant' },
-  tenantName: { type: String, default: '' },
-  room:       { type: String, default: '' },
-  category:   { type: String, default: 'other' },
-  description:{ type: String, required: true },
-  status:     { type: String, enum: ['open', 'in-progress', 'resolved'], default: 'open' },
-  priority:   { type: String, enum: ['high', 'medium', 'low'], default: 'medium' },
-  ownerNotes: { type: String, default: '' },
-  resolvedAt: { type: String, default: null },
+  userId:      { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User', index: true },
+  tenantId:    { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'Tenant' },
+  propertyId:  { type: mongoose.Schema.Types.ObjectId, ref: 'Property', default: null },
+  tenantName:  { type: String, default: '' },
+  room:        { type: String, default: '' },
+  category:    { type: String, enum: { values: COMPLAINT_CATEGORIES, message: 'Unknown category.' }, default: 'other' },
+  description: { type: String, required: [true, 'Please describe the issue.'], trim: true, maxlength: [2000, 'Description is too long.'] },
+  status:      { type: String, enum: { values: COMPLAINT_STATUSES, message: 'Unknown status.' }, default: 'open' },
+  priority:    { type: String, enum: { values: COMPLAINT_PRIORITIES, message: 'Unknown priority.' }, default: 'medium' },
+  ownerNotes:  { type: String, default: '', trim: true, maxlength: [1000, 'Notes are too long.'] },
+  resolvedAt:  { type: Date, default: null },
+
+  // Raised by the tenant in the app
+  source:      { type: String, enum: ['owner', 'resident'], default: 'owner' },
+  residentId:  { type: mongoose.Schema.Types.ObjectId, ref: 'Resident', default: null },
+  photoIds:    { type: [mongoose.Schema.Types.ObjectId], default: [], validate: { validator: v => v.length <= 3, message: 'At most 3 photos.' } },
+  okToEnter:   { type: Boolean, default: false },
+  // The tenant confirms the fix (or it closes itself 72 h after being resolved), or reopens it
+  closedAt:    { type: Date, default: null },
+  closedBy:    { type: String, enum: ['resident', 'auto', null], default: null },
+  reopenCount: { type: Number, default: 0 },
+  withdrawnAt: { type: Date, default: null },
 }, { timestamps: true })
 
 complaintSchema.set('toJSON', {
   transform: (_, ret) => {
-    ret.id        = ret._id.toString()
-    ret.tenantId  = ret.tenantId?.toString()
-    ret.updatedAt = ret.updatedAt?.toISOString()
+    ret.id = ret._id.toString()
+    ret.tenantId = ret.tenantId?.toString()
+    ret.propertyId = ret.propertyId?.toString() ?? null
+    ret.residentId = ret.residentId?.toString() ?? null
+    ret.photoIds = (ret.photoIds ?? []).map(String)
     delete ret._id
     delete ret.__v
     delete ret.userId

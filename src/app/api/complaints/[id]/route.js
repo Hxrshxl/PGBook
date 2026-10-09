@@ -1,22 +1,37 @@
-import { NextResponse } from 'next/server'
-import dbConnect from '@/lib/db'
 import Complaint from '@/lib/models/Complaint'
-import { getUserFromRequest } from '@/lib/auth'
+import { route, readJson, json, pick, assertObjectId, ApiError } from '@/lib/api'
+import { complaintTarget } from '@/lib/auditTargets'
 
-export async function PATCH(request, { params }) {
-  await dbConnect()
-  const auth = getUserFromRequest(request)
-  if (!auth) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
-
-  const { status, ownerNotes } = await request.json()
-  const updates = { status, ownerNotes }
-  if (status === 'resolved') updates.resolvedAt = new Date().toISOString()
-
-  const complaint = await Complaint.findOneAndUpdate(
-    { _id: params.id, userId: auth.id },
-    updates,
-    { new: true }
-  )
-  if (!complaint) return NextResponse.json({ message: 'Complaint not found' }, { status: 404 })
-  return NextResponse.json(complaint)
+async function findComplaint(scope, id) {
+  assertObjectId(id, 'Complaint')
+  const complaint = await Complaint.findOne({ _id: id, ...scope.filter() })
+  if (!complaint) throw new ApiError(404, 'Complaint not found.')
+  return complaint
 }
+
+// Update status, priority or owner notes.
+export const PATCH = route(async ({ request, params, scope, audit }) => {
+  const complaint = await findComplaint(scope, params.id)
+  const body = await readJson(request)
+  const previousStatus = complaint.status
+  complaint.set(pick(body, ['status', 'priority', 'ownerNotes', 'category']))
+  const fields = complaint.directModifiedPaths()
+  if (complaint.status !== previousStatus) {
+    complaint.resolvedAt = complaint.status === 'resolved' ? new Date() : null
+  }
+  await complaint.save()
+  if (fields.length) {
+    await audit('complaint.update', {
+      target: complaintTarget(complaint),
+      details: { fields, ...(complaint.status !== previousStatus ? { statusFrom: previousStatus, statusTo: complaint.status } : {}) },
+    })
+  }
+  return json(complaint)
+}, { permission: 'complaints.manage' })
+
+export const DELETE = route(async ({ params, scope, audit }) => {
+  const complaint = await findComplaint(scope, params.id)
+  await complaint.deleteOne()
+  await audit('complaint.delete', { target: complaintTarget(complaint), details: { category: complaint.category, status: complaint.status } })
+  return json({ ok: true })
+}, { permission: 'complaints.manage' })

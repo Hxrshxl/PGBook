@@ -1,14 +1,15 @@
-import { NextResponse } from 'next/server'
-import dbConnect from '@/lib/db'
 import UtilityBill from '@/lib/models/UtilityBill'
-import { getUserFromRequest } from '@/lib/auth'
+import { route, json, assertObjectId, ApiError } from '@/lib/api'
+import { recomputeUtilityShares } from '@/lib/billing'
+import { billTarget } from '@/lib/auditTargets'
 
-export async function DELETE(request, { params }) {
-  await dbConnect()
-  const auth = getUserFromRequest(request)
-  if (!auth) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+// Deletes a bill and removes its shares from the affected tenants' dues.
+export const DELETE = route(async ({ params, org, scope, audit }) => {
+  assertObjectId(params.id, 'Bill')
+  const bill = await UtilityBill.findOneAndDelete({ _id: params.id, ...scope.filter() })
+  if (!bill) throw new ApiError(404, 'Bill not found.')
 
-  const bill = await UtilityBill.findOneAndDelete({ _id: params.id, userId: auth.id })
-  if (!bill) return NextResponse.json({ message: 'Bill not found' }, { status: 404 })
-  return NextResponse.json({ message: 'Deleted' })
-}
+  const payments = await recomputeUtilityShares(org._id, bill.month, bill.allocations.map(a => a.tenantId))
+  await audit('bill.delete', { target: billTarget(bill), details: { type: bill.type, amount: bill.totalAmount, month: bill.month, duesUpdated: payments.length } })
+  return json({ ok: true, payments })
+}, { permission: 'bills.manage' })

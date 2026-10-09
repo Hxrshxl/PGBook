@@ -1,32 +1,32 @@
-import { getMonthPayments, getActiveTenants, getTotalDue } from './helpers'
+import { getMonthPayments, getTotalDue, getBalance } from './helpers.js'
 
 export function getMonthlyRevenue(payments, months) {
-  return months.map(month => ({
-    month,
-    revenue: getMonthPayments(payments, month).reduce((s, p) => s + (p.amountPaid ?? 0), 0),
-    due:     getMonthPayments(payments, month).reduce((s, p) => s + getTotalDue(p), 0),
-  }))
+  return months.map(month => {
+    const mps = getMonthPayments(payments, month)
+    return {
+      month,
+      revenue: mps.reduce((s, p) => s + (p.amountPaid ?? 0), 0),
+      due:     mps.reduce((s, p) => s + getTotalDue(p), 0),
+      count:   mps.length,
+    }
+  })
 }
 
 export function getCollectionRate(payments, month) {
   const mps = getMonthPayments(payments, month)
-  if (!mps.length) return 0
   const collected = mps.reduce((s, p) => s + (p.amountPaid ?? 0), 0)
   const due = mps.reduce((s, p) => s + getTotalDue(p), 0)
   return due > 0 ? Math.round((collected / due) * 100) : 0
 }
 
-export function getOccupancyRate(tenants) {
-  if (!tenants.length) return 0
-  const active = tenants.filter(t => t.status === 'active').length
-  return Math.round((active / tenants.length) * 100)
+/** Active tenants as a share of total beds; null when bed capacity isn't configured. */
+export function getOccupancyRate(activeCount, totalBeds) {
+  if (!totalBeds) return null
+  return Math.min(100, Math.round((activeCount / totalBeds) * 100))
 }
 
 export function getOutstandingDues(payments, month) {
-  return getMonthPayments(payments, month).reduce((s, p) => {
-    const bal = Math.max(0, getTotalDue(p) - (p.amountPaid ?? 0))
-    return s + bal
-  }, 0)
+  return getMonthPayments(payments, month).reduce((s, p) => s + getBalance(p), 0)
 }
 
 export function getAvgMonthlyRevenue(payments, months) {

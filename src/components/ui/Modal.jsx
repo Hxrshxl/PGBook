@@ -27,6 +27,9 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 'ma
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ duration: 0.2 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label={typeof title === 'string' ? title : undefined}
             className={`relative bg-white rounded-2xl shadow-2xl w-full ${maxWidth} max-h-[90vh] overflow-y-auto`}
           >
             {title && (
@@ -34,7 +37,7 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 'ma
                 <h2 className="font-semibold text-slate-900 text-base" style={{ fontFamily: 'Space Grotesk' }}>
                   {title}
                 </h2>
-                <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <button onClick={onClose} aria-label="Close" className="text-slate-400 hover:text-slate-600 transition-colors">
                   <X size={18} />
                 </button>
               </div>

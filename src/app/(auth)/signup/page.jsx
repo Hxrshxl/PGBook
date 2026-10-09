@@ -18,11 +18,11 @@ export default function SignupPage() {
     e.preventDefault()
     setError('')
     if (form.password !== form.confirm) return setError('Passwords do not match.')
-    if (form.password.length < 6) return setError('Password must be at least 6 characters.')
+    if (form.password.length < 8) return setError('Password must be at least 8 characters.')
     setLoading(true)
     try {
       await signup({ name: form.name, pgName: form.pgName, email: form.email, password: form.password })
-      router.push('/dashboard')
+      router.replace('/dashboard')
     } catch (err) {
       setError(err.message ?? 'Signup failed.')
       setLoading(false)
@@ -55,7 +55,7 @@ export default function SignupPage() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-slate-400 text-sm font-medium mb-1.5">Your name</label>
                 <input type="text" required value={form.name} onChange={e => update('name', e.target.value)} placeholder="Ramesh Kumar" className={inputCls} />
@@ -72,7 +72,7 @@ export default function SignupPage() {
             <div>
               <label className="block text-slate-400 text-sm font-medium mb-1.5">Password</label>
               <div className="relative">
-                <input type={showPassword ? 'text' : 'password'} required value={form.password} onChange={e => update('password', e.target.value)} placeholder="Min. 6 characters" className={`${inputCls} px-4 pr-10`} />
+                <input type={showPassword ? 'text' : 'password'} required value={form.password} onChange={e => update('password', e.target.value)} placeholder="Min. 8 characters" minLength={8} className={`${inputCls} px-4 pr-10`} />
                 <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>

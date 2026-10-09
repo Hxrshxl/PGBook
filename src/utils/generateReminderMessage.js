@@ -1,19 +1,33 @@
-import { formatMonth, getBalance, getTotalDue } from './helpers'
+import { chargesTotal, formatMonth, getBalance, getTotalDue } from './helpers.js'
 
-export function generateReminderMessage(tenant, payment, pgSettings, lang = 'en') {
-  const month = formatMonth(payment?.month ?? '')
-  const due = payment ? getBalance(payment) : tenant.rentAmount
-  const total = payment ? getTotalDue(payment) : tenant.rentAmount
+function dueDateText(month, rentDueDay, lang) {
+  if (!rentDueDay || !month) return ''
+  const [y, m] = month.split('-').map(Number)
+  const date = new Date(y, m - 1, rentDueDay).toLocaleDateString(lang === 'hi' ? 'hi-IN' : 'en-IN', { day: 'numeric', month: 'long' })
+  return lang === 'hi' ? `\n🗓️ अंतिम तिथि: *${date}*` : `\n🗓️ Due date: *${date}*`
+}
+
+/**
+ * Builds the WhatsApp reminder text. `payment` may be null when no dues have
+ * been created for the month yet — `month` is then used directly.
+ */
+export function generateReminderMessage(tenant, payment, pgSettings, lang = 'en', month = payment?.month) {
+  const monthLabel = formatMonth(payment?.month ?? month)
+  const monthly = tenant.rentAmount + chargesTotal(tenant.recurringCharges)
+  const due = payment ? getBalance(payment) : monthly
+  const total = payment ? getTotalDue(payment) : monthly
+  const late = payment?.lateFee > 0 ? payment.lateFee : 0
   const partial = payment && payment.amountPaid > 0
-  const upi = pgSettings.upiId || 'N/A'
-  const pg = pgSettings.pgName || 'Your PG'
+  const pg = pgSettings.pgName || pgSettings.logoText || 'Your PG'
+  const rupees = n => '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 })
+  const dueLine = dueDateText(payment?.month ?? month, pgSettings.rentDueDay, lang)
 
   if (lang === 'hi') {
+    const upiLine = pgSettings.upiId ? `\n💳 UPI ID: *${pgSettings.upiId}* पर भेज दीजिए।` : ''
     return `नमस्ते ${tenant.name} जी 🙏
 
-आपके कमरे *${tenant.room}* का *${month}* महीने का किराया${partial ? ` (₹${total.toLocaleString('en-IN')} में से ₹${due.toLocaleString('en-IN')} बाकी है)` : ` ₹${due.toLocaleString('en-IN')} अभी बाकी है`}।
-
-💳 UPI ID: *${upi}* पर भेज दीजिए।
+आपके कमरे *${tenant.room}* का *${monthLabel}* महीने का किराया${partial ? ` (${rupees(total)} में से ${rupees(due)} बाकी है)` : ` ${rupees(due)} अभी बाकी है`}।
+${late ? `\n⏰ इसमें ${rupees(late)} लेट फीस शामिल है।` : ''}${dueLine}${upiLine}
 
 कोई दिक्कत हो तो बताइए।
 
@@ -21,11 +35,11 @@ export function generateReminderMessage(tenant, payment, pgSettings, lang = 'en'
 — ${pg}`
   }
 
+  const upiLine = pgSettings.upiId ? `\n💳 Please pay via UPI: *${pgSettings.upiId}*` : ''
   return `Hi ${tenant.name} 👋
 
-This is a gentle reminder that your rent for *Room ${tenant.room}* — *${month}* is${partial ? ` partially pending. Amount due: *₹${due.toLocaleString('en-IN')}* (of ₹${total.toLocaleString('en-IN')} total)` : ` due: *₹${due.toLocaleString('en-IN')}*`}.
-
-💳 Please transfer to UPI: *${upi}*
+This is a gentle reminder that your rent for *Room ${tenant.room}* — *${monthLabel}* is${partial ? ` partially pending. Amount due: *${rupees(due)}* (of ${rupees(total)} total)` : ` due: *${rupees(due)}*`}.
+${late ? `\n⏰ Includes a late fee of ${rupees(late)}.` : ''}${dueLine}${upiLine}
 
 Let us know if you have any questions.
 

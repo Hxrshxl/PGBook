@@ -13,8 +13,11 @@ function below1000(n) {
 }
 
 export function numberToWords(n) {
-  const num = Math.floor(Number(n) || 0)
-  if (num === 0) return 'Zero Rupees Only'
+  const totalPaise = Math.round((Number(n) || 0) * 100)
+  const num = Math.floor(totalPaise / 100)
+  const paise = totalPaise % 100
+  const paiseText = paise ? ` and ${below100(paise)} Paise` : ''
+  if (num === 0) return paise ? `${below100(paise)} Paise Only` : 'Zero Rupees Only'
 
   let parts = []
   let rem = num
@@ -29,5 +32,5 @@ export function numberToWords(n) {
   if (thou)  parts.push(below1000(thou)  + ' Thousand')
   if (rest)  parts.push(below1000(rest))
 
-  return parts.join(' ') + ' Rupees Only'
+  return parts.join(' ') + ' Rupees' + paiseText + ' Only'
 }

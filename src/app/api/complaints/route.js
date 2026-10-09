@@ -1,23 +1,27 @@
-import { NextResponse } from 'next/server'
-import dbConnect from '@/lib/db'
 import Complaint from '@/lib/models/Complaint'
-import { getUserFromRequest } from '@/lib/auth'
+import Tenant from '@/lib/models/Tenant'
+import { route, readJson, json, pick, assertObjectId, ApiError } from '@/lib/api'
+import { complaintTarget } from '@/lib/auditTargets'
 
-export async function GET(request) {
-  await dbConnect()
-  const auth = getUserFromRequest(request)
-  if (!auth) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+export const GET = route(async ({ scope }) => {
+  const complaints = await Complaint.find(scope.filter()).sort({ createdAt: -1 })
+  return json(complaints)
+}, { permission: 'complaints.view' })
 
-  const complaints = await Complaint.find({ userId: auth.id }).sort({ createdAt: -1 })
-  return NextResponse.json(complaints)
-}
+export const POST = route(async ({ request, org, scope, audit }) => {
+  const body = await readJson(request)
+  assertObjectId(body.tenantId, 'Tenant')
+  const tenant = await Tenant.findOne({ _id: body.tenantId, ...scope.filter() })
+  if (!tenant) throw new ApiError(404, 'Tenant not found.')
 
-export async function POST(request) {
-  await dbConnect()
-  const auth = getUserFromRequest(request)
-  if (!auth) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
-
-  const body = await request.json()
-  const complaint = await Complaint.create({ ...body, userId: auth.id })
-  return NextResponse.json(complaint, { status: 201 })
-}
+  const complaint = await Complaint.create({
+    ...pick(body, ['category', 'priority', 'description']),
+    userId: org._id,
+    propertyId: tenant.propertyId,
+    tenantId: tenant._id,
+    tenantName: tenant.name,
+    room: tenant.room,
+  })
+  await audit('complaint.create', { target: complaintTarget(complaint), details: { category: complaint.category, priority: complaint.priority } })
+  return json(complaint, 201)
+}, { permission: 'complaints.manage' })

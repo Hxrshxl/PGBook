@@ -1,26 +1,47 @@
 {
   "name": "pgbook",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "seed": "node --experimental-vm-modules src/lib/seed.mjs"
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:smoke": "node scripts/smoke-test.mjs",
+    "seed": "node --env-file=.env.local src/lib/seed.mjs",
+    "admin": "node --env-file=.env.local scripts/admin.mjs",
+    "test:admin": "node scripts/admin-smoke-test.mjs",
+    "test:team": "node scripts/team-smoke-test.mjs",
+    "test:billing": "node scripts/billing-smoke-test.mjs",
+    "test:resident": "node scripts/resident-smoke-test.mjs"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "framer-motion": "^12.40.0",
-    "jsonwebtoken": "^9.0.2",
+    "jose": "^5.10.0",
     "lucide-react": "^1.18.0",
-    "mongoose": "^8.9.5",
-    "next": "^15.3.3",
+    "mongoose": "^8.24.5",
+    "next": "^15.5.27",
+    "qrcode": "^1.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.7",
     "@tailwindcss/postcss": "^4.3.1",
-    "tailwindcss": "^4.3.1"
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^15.5.27",
+    "tailwindcss": "^4.3.1",
+    "vitest": "^5.0.3"
+  },
+  "overrides": {
+    "next": {
+      "postcss": "^8.5.29"
+    }
+  },
+  "engines": {
+    "node": ">=20.6"
   }
 }
