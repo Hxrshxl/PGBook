@@ -8,7 +8,7 @@ const AppContext = createContext(null)
 const LISTS = ['properties', 'rooms', 'tenants', 'payments', 'utilityBills', 'complaints', 'expenses', 'cash']
 const defaultState = {
   ...Object.fromEntries(LISTS.map(k => [k, []])),
-  approvals: { requests: [], counts: { requests: 0, cash: 0, pendingCashAmount: 0 } },
+  approvals: { requests: [], claims: [], moveOuts: [], settlements: [], counts: { requests: 0, cash: 0, pendingCashAmount: 0, claims: 0, moveOuts: 0, settlements: 0 } },
 }
 
 // What each list needs, and where it comes from. Lists the role can't see stay empty.
@@ -77,7 +77,7 @@ export function AppProvider({ children }) {
   const refreshApprovals = useCallback(async () => {
     if (!can('approvals.view')) return
     const data = await api.get('/approvals')
-    dispatch({ type: 'APPROVALS', payload: { requests: data.requests, counts: data.counts } })
+    dispatch({ type: 'APPROVALS', payload: { requests: data.requests, claims: data.claims ?? [], moveOuts: data.moveOuts ?? [], settlements: data.settlements ?? [], counts: data.counts } })
   }, [can])
 
   const reload = useCallback(async () => {
@@ -226,6 +226,18 @@ export function AppProvider({ children }) {
     await refreshApprovals()
   }
 
+  // ── Tenant app: payment claims, move-out notices ────────────
+  async function decideClaim(id, decision, note) {
+    const { payment } = await api.post(`/claims/${id}`, { decision, note })
+    if (payment) upsertList('payments', [payment])
+    await refreshApprovals()
+  }
+  async function decideMoveOut(id, decision, note) {
+    await api.post(`/moveouts/${id}`, { decision, note })
+    if (decision === 'acknowledge') upsertList('tenants', await api.get('/tenants'))
+    await refreshApprovals()
+  }
+
   // ── Utility bills ───────────────────────────────────────────
   async function addUtilityBill(data) {
     const { bill, payments } = await api.post('/utility-bills', { ...data, propertyId: targetProperty(data) })
@@ -319,7 +331,7 @@ export function AppProvider({ children }) {
       loading, error, reload, refreshApprovals,
       addTenant, updateTenant, vacateTenant, reactivateTenant, deleteTenant,
       createDue, generateDues, applyLateFees, updateDue, deleteDue, recordPayment, deletePaymentEntry,
-      collectCash, decideCash, decideApproval, cancelApproval,
+      collectCash, decideCash, decideApproval, cancelApproval, decideClaim, decideMoveOut,
       addUtilityBill, deleteUtilityBill,
       addComplaint, updateComplaint, deleteComplaint,
       addProperty, updateProperty, archiveProperty, addRoom, updateRoom, archiveRoom,

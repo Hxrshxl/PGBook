@@ -40,11 +40,28 @@ export default function ComplaintCard({ complaint, onUpdate, onDelete }) {
       </div>
 
       <div>
-        <span className="inline-block text-xs font-medium px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 mb-2">
-          {CATEGORY_LABELS[complaint.category] ?? complaint.category}
-        </span>
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          <span className="inline-block text-xs font-medium px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">
+            {CATEGORY_LABELS[complaint.category] ?? complaint.category}
+          </span>
+          {complaint.source === 'resident' && <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700">From tenant app</span>}
+          {complaint.okToEnter && <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700">OK to enter room</span>}
+          {complaint.reopenCount > 0 && <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-50 text-amber-700">Reopened {complaint.reopenCount}×</span>}
+        </div>
         <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap break-words">{complaint.description}</p>
-        {complaint.resolvedAt && <p className="text-xs text-emerald-600 mt-2">Resolved {formatDate(complaint.resolvedAt)}</p>}
+        {complaint.photoIds?.length > 0 && (
+          <div className="flex gap-2 mt-3">
+            {complaint.photoIds.map(id => (
+              <a key={id} href={`/api/files/${id}`} target="_blank" rel="noopener noreferrer" className="block w-16 h-16 rounded-lg overflow-hidden border border-slate-200 hover:border-indigo-400">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={`/api/files/${id}`} alt="Complaint photo" className="w-full h-full object-cover" loading="lazy" />
+              </a>
+            ))}
+          </div>
+        )}
+        {complaint.withdrawnAt
+          ? <p className="text-xs text-slate-500 mt-2">Withdrawn by the tenant {formatDate(complaint.withdrawnAt)}</p>
+          : complaint.resolvedAt && <p className="text-xs text-emerald-600 mt-2">Resolved {formatDate(complaint.resolvedAt)}{complaint.closedBy === 'resident' ? ' · tenant confirmed it is fixed' : complaint.closedBy === 'auto' ? ' · closed automatically' : complaint.source === 'resident' ? ' · waiting for the tenant to confirm' : ''}</p>}
       </div>
 
       {editingNotes ? (
@@ -54,7 +71,7 @@ export default function ComplaintCard({ complaint, onUpdate, onDelete }) {
             maxLength={1000}
             value={notes}
             onChange={e => setNotes(e.target.value)}
-            placeholder="Add internal notes…"
+            placeholder={complaint.source === 'resident' ? 'Update for the tenant (they see it in the app)…' : 'Add notes…'}
             aria-label="Owner notes"
             className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors resize-none"
             autoFocus

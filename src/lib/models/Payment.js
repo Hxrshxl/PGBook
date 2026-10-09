@@ -13,6 +13,8 @@ const transactionSchema = new mongoose.Schema({
     type: new mongoose.Schema({ id: mongoose.Schema.Types.ObjectId, name: String, role: String }, { _id: false }),
     default: undefined,
   },
+  // Where the entry came from (absent = recorded directly by the owner or staff)
+  source: { type: String, enum: ['claim', 'cash', 'deposit'], default: undefined },
 }, { timestamps: { createdAt: true, updatedAt: false } })
 
 const chargeSchema = new mongoose.Schema({
@@ -56,7 +58,7 @@ paymentSchema.set('toJSON', {
     ret.tenantId = ret.tenantId?.toString()
     ret.propertyId = ret.propertyId?.toString() ?? null
     ret.transactions = (ret.transactions ?? []).map(t => ({
-      id: t._id.toString(), amount: t.amount, date: t.date, method: t.method, note: t.note, createdAt: t.createdAt,
+      id: t._id.toString(), amount: t.amount, date: t.date, method: t.method, note: t.note, createdAt: t.createdAt, source: t.source,
       recordedBy: t.recordedBy ? { name: t.recordedBy.name, role: t.recordedBy.role } : undefined,
     }))
     delete ret._id

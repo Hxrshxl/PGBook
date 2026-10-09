@@ -8,6 +8,7 @@ import { formatCurrency, formatCurrencyRounded, formatDate, formatMonth, timeAgo
 import EmptyState from '@/components/ui/EmptyState'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import ReasonDialog from '@/components/ui/ReasonDialog'
+import TenantAppSections from '@/components/approvals/TenantAppSections'
 
 const STATUS_STYLES = {
   pending:   'bg-amber-50 text-amber-700 border-amber-200',
@@ -17,6 +18,9 @@ const STATUS_STYLES = {
   failed:    'bg-red-50 text-red-700 border-red-200',
   cancelled: 'bg-slate-100 text-slate-500 border-slate-200',
   expired:   'bg-slate-100 text-slate-500 border-slate-200',
+  withdrawn: 'bg-slate-100 text-slate-500 border-slate-200',
+  acknowledged: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  declined:  'bg-red-50 text-red-700 border-red-200',
 }
 
 function StatusPill({ status }) {
@@ -57,10 +61,14 @@ export default function ApprovalsPage() {
   const pendingRequests = requests.filter(r => r.status === 'pending')
   const pendingCash = cash.filter(c => c.status === 'pending')
   const pendingCashTotal = pendingCash.reduce((s, c) => s + c.amount, 0)
+  const tenantAppWaiting = (approvals.counts?.claims ?? 0) + (approvals.counts?.moveOuts ?? 0) + (approvals.counts?.settlements ?? 0)
+  const waitingTotal = pendingRequests.length + pendingCash.length + tenantAppWaiting
 
   const history = [
     ...requests.filter(r => r.status !== 'pending').map(r => ({ kind: 'request', at: r.decidedAt ?? r.updatedAt, item: r })),
     ...cash.filter(c => c.status !== 'pending').map(c => ({ kind: 'cash', at: c.decidedAt ?? c.updatedAt, item: c })),
+    ...(approvals.claims ?? []).filter(c => c.status !== 'pending').map(c => ({ kind: 'claim', at: c.decidedAt ?? c.updatedAt, item: c })),
+    ...(approvals.moveOuts ?? []).filter(m => m.status !== 'pending').map(m => ({ kind: 'moveout', at: m.decidedAt ?? m.updatedAt, item: m })),
   ].sort((a, b) => String(b.at).localeCompare(String(a.at)))
 
   async function handleApprove() {
@@ -92,7 +100,7 @@ export default function ApprovalsPage() {
   }
 
   const subtitle = isOwner
-    ? 'Staff requests and cash handovers that need you'
+    ? 'Staff requests, cash handovers and tenant reports that need you'
     : canConfirmCash
       ? 'Cash handovers to confirm, and the requests you sent to the owner'
       : 'Cash you collected and requests you sent to the owner'
@@ -105,7 +113,7 @@ export default function ApprovalsPage() {
       </div>
 
       <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit mb-6">
-        {[['waiting', `Waiting (${pendingRequests.length + pendingCash.length})`], ['history', 'History']].map(([key, label]) => (
+        {[['waiting', `Waiting (${waitingTotal})`], ['history', 'History']].map(([key, label]) => (
           <button key={key} onClick={() => setTab(key)}
             className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${tab === key ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
             {label}
@@ -115,7 +123,8 @@ export default function ApprovalsPage() {
 
       {tab === 'waiting' && (
         <>
-          {pendingRequests.length === 0 && pendingCash.length === 0 && (
+          <TenantAppSections />
+          {waitingTotal === 0 && (
             <EmptyState icon={Inbox} title="Nothing waiting" message={isOwner ? 'When staff ask to change dues or remove a payment, or hand over cash, it shows up here.' : 'Requests you send and cash you log will show here until they are decided.'} />
           )}
 
@@ -197,10 +206,14 @@ export default function ApprovalsPage() {
                     <p className="text-sm text-slate-900">
                       {kind === 'cash'
                         ? <>{formatCurrency(item.amount)} cash from {item.tenantName} <span className="text-slate-500">({formatMonth(item.month)})</span></>
-                        : item.summary}
+                        : kind === 'claim'
+                          ? <>{formatCurrency(item.amount)} reported in the app by {item.tenantName} <span className="text-slate-500">({formatMonth(item.month)})</span></>
+                          : kind === 'moveout'
+                            ? <>Move-out notice from {item.tenantName} for {formatDate(item.moveOutDate)}</>
+                            : item.summary}
                     </p>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      {kind === 'cash' ? `Collected by ${item.collectedBy?.name}` : `Asked by ${item.requestedBy?.name}`}
+                      {kind === 'cash' ? `Collected by ${item.collectedBy?.name}` : kind === 'claim' || kind === 'moveout' ? 'From the tenant app' : `Asked by ${item.requestedBy?.name}`}
                       {item.decidedBy?.name && ` · ${item.status === 'cancelled' ? 'withdrawn' : 'decided'} by ${item.decidedBy.name}`}
                       {(item.decidedAt || item.updatedAt) && ` · ${timeAgo(item.decidedAt ?? item.updatedAt)}`}
                     </p>

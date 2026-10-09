@@ -4,7 +4,8 @@ import { Plus, Search, Users } from 'lucide-react'
 import { useAppData } from '@/context/AppContext'
 import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/context/ToastContext'
-import { todayISO } from '@/utils/helpers'
+import { todayISO, toWhatsAppNumber } from '@/utils/helpers'
+import { api } from '@/utils/api'
 import Modal from '@/components/ui/Modal'
 import EmptyState from '@/components/ui/EmptyState'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
@@ -51,6 +52,16 @@ export default function TenantsPage() {
       })
       .sort((a, b) => a.room.localeCompare(b.room, undefined, { numeric: true }))
   }, [tenants, tab, search])
+
+  async function handleInvite(tenant) {
+    try {
+      const { message } = await api.post(`/tenants/${tenant.id}/invite`)
+      window.open(`https://wa.me/${toWhatsAppNumber(tenant.phone)}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer')
+      showToast(`Opening WhatsApp to invite ${tenant.name}…`, 'info')
+    } catch (err) {
+      showToast(err.message, 'error')
+    }
+  }
 
   async function handleAdd(formData) {
     const tenant = await addTenant(formData)
@@ -127,7 +138,8 @@ export default function TenantsPage() {
           {filtered.map(t => (
             <TenantCard key={t.id} tenant={t} propertyName={showProperty ? propertyById.get(t.propertyId)?.name : null}
               onEdit={canManage ? setEditingTenant : null} onVacate={canManage ? openVacate : null}
-              onReactivate={canManage ? setRestoring : null} onDelete={can('tenants.delete') ? setDeleting : null} />
+              onReactivate={canManage ? setRestoring : null} onDelete={can('tenants.delete') ? setDeleting : null}
+              onInvite={canManage ? handleInvite : null} />
           ))}
         </div>
       )}

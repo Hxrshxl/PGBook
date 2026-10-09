@@ -1,15 +1,15 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
-import { Menu, Bell, LogOut, ChevronDown, Settings, Building } from 'lucide-react'
+import { Menu, LogOut, ChevronDown, Settings, Building } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useAppData } from '@/context/AppContext'
+import NotificationBell from './NotificationBell'
 
 export default function TopBar({ onMenuClick }) {
   const { user, access, logout } = useAuth()
-  const { complaints, properties, selectedPropertyId, selectProperty } = useAppData()
+  const { properties, selectedPropertyId, selectProperty } = useAppData()
   const [dropdownOpen, setDropdownOpen] = useState(false)
-  const openComplaints = complaints.filter(c => c.status !== 'resolved').length
 
   async function handleLogout() {
     await logout()
@@ -45,19 +45,7 @@ export default function TopBar({ onMenuClick }) {
       </div>
 
       <div className="flex items-center gap-2">
-        <Link
-          href="/dashboard/complaints"
-          aria-label={openComplaints ? `${openComplaints} open complaints` : 'Complaints'}
-          title={openComplaints ? `${openComplaints} open complaint(s)` : 'No open complaints'}
-          className="relative w-9 h-9 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700 transition-colors"
-        >
-          <Bell size={18} />
-          {openComplaints > 0 && (
-            <span className="absolute top-1 right-1 min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold leading-4 text-center">
-              {openComplaints > 9 ? '9+' : openComplaints}
-            </span>
-          )}
-        </Link>
+        <NotificationBell />
 
         <div className="relative">
           <button

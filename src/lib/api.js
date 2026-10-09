@@ -6,6 +6,7 @@ import { clearSessionCookie, getTokenFromRequest, verifyToken } from './auth'
 import { can } from './policy'
 import { orgActor, recordAudit } from './audit'
 import { makeScope, resolveOrgContext } from './orgContext'
+import { billingState } from './subscription'
 
 // Time zone used for "today" on the server (rent months, vacate dates, receipts).
 export const APP_TIME_ZONE = process.env.APP_TIME_ZONE || 'Asia/Kolkata'
@@ -33,8 +34,12 @@ export function json(data, status = 200) {
  *   scope  — query helpers limited to this organization and the properties the user may access
  *   actor  — who is acting, for permission checks and the audit log
  *   audit(action, { target, details, reason }) — records an event in the organization's activity log
+ *   billing — the organization's subscription state (see subscription.js)
+ *
+ * When the subscription has lapsed the organization is read-only: changes are refused
+ * with 402 READ_ONLY unless the route sets readOnlyOk (billing, export, own account).
  */
-export function route(handler, { auth = true, permission } = {}) {
+export function route(handler, { auth = true, permission, readOnlyOk = false } = {}) {
   return async (request, context) => {
     try {
       if (!['GET', 'HEAD'].includes(request.method)) assertSameOrigin(request)
@@ -54,9 +59,15 @@ export function route(handler, { auth = true, permission } = {}) {
       }
       const actor = { ...orgActor(user), role: ctx.role, orgId: ctx.org._id }
       if (permission && !can(actor, permission)) throw new ApiError(403, 'Your role does not allow this.')
+      const billing = billingState(ctx.org)
+      if (billing.readOnly && !readOnlyOk && !['GET', 'HEAD'].includes(request.method)) {
+        throw new ApiError(402, ctx.role === 'owner'
+          ? 'Your account is read-only because the subscription is not active. Choose a plan in Subscription to make changes — your data is safe.'
+          : 'This PG account is read-only until the owner renews the subscription.', 'READ_ONLY')
+      }
       const scope = makeScope(ctx)
       const audit = (action, extra = {}) => recordAudit({ actor: orgActor(user, ctx.role), action, orgId: ctx.org._id, request, ...extra })
-      return await handler({ request, params, user, org: ctx.org, role: ctx.role, membership: ctx.membership, scope, actor, audit })
+      return await handler({ request, params, user, org: ctx.org, role: ctx.role, membership: ctx.membership, scope, actor, audit, billing })
     } catch (err) {
       return errorResponse(err)
     }

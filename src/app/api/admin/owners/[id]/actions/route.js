@@ -1,7 +1,7 @@
 import { readJson, json, ApiError } from '@/lib/api'
 import { adminRoute } from '@/lib/adminApi'
 import { can } from '@/lib/policy'
-import { extendTrial, findOrg, forceLogoutOrg, reactivateOrg, suspendOrg } from '@/lib/orgAdmin'
+import { extendTrial, findOrg, forceLogoutOrg, reactivateOrg, setOrgPlan, suspendOrg } from '@/lib/orgAdmin'
 import { approvalView, createApproval } from '@/lib/approvals'
 import { PLANS } from '@/lib/plans'
 
@@ -20,7 +20,7 @@ function ownerSummary(user) {
 // Roles that can only *request* a suspension get an approval request instead.
 export const POST = adminRoute(async ({ request, params, actor }) => {
   const user = await findOrg(params.id)
-  const { action, reason, days } = await readJson(request)
+  const { action, reason, days, plan, until } = await readJson(request)
   const ctx = { reason, actor, request }
 
   switch (action) {
@@ -28,6 +28,11 @@ export const POST = adminRoute(async ({ request, params, actor }) => {
       if (!can(actor, 'orgs.extendTrial')) throw new ApiError(403, 'Your role cannot extend trials.')
       await extendTrial(user, { ...ctx, days })
       return json({ owner: ownerSummary(user), message: `Trial extended by ${days} day(s).` })
+
+    case 'setPlan':
+      if (!can(actor, 'orgs.setPlan')) throw new ApiError(403, 'Your role cannot change plans.')
+      await setOrgPlan(user, { ...ctx, plan, until })
+      return json({ owner: ownerSummary(user), message: `Plan set to ${PLANS[plan].label}.` })
 
     case 'forceLogout':
       if (!can(actor, 'orgs.forceLogout')) throw new ApiError(403, 'Your role cannot sign owners out.')

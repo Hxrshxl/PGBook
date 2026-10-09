@@ -35,10 +35,16 @@ export async function recordAudit({ actor, action, orgId = null, target, reason 
   }
 }
 
-// Business data inside an owner's account: tenants, money, complaints.
-const BUSINESS_PREFIXES = ['tenant.', 'dues.', 'payment.', 'bill.', 'complaint.']
+// Business data inside an owner's account: tenants, money, complaints, residents.
+const BUSINESS_PREFIXES = [
+  'tenant.', 'dues.', 'payment.', 'bill.', 'complaint.', 'expense.', 'cash.', 'room.',
+  'claim.', 'settlement.', 'moveout.', 'notice.', 'resident.',
+]
 
-export function isBusinessEvent(action) {
+export function isBusinessEvent(action, actorRealm) {
+  if (actorRealm === 'resident') return true
+  // Staff approval requests inside an organization describe tenants and amounts.
+  if (actorRealm === 'org' && action.startsWith('approval.')) return true
   return BUSINESS_PREFIXES.some(p => action.startsWith(p))
 }
 
@@ -48,7 +54,7 @@ export function isBusinessEvent(action) {
  */
 export function redactForAdmin(event) {
   const json = typeof event.toJSON === 'function' ? event.toJSON() : { ...event }
-  if (json.actor?.realm !== 'admin' && isBusinessEvent(json.action)) {
+  if (json.actor?.realm !== 'admin' && isBusinessEvent(json.action, json.actor?.realm)) {
     json.target = json.target ? { kind: json.target.kind } : undefined
     json.details = undefined
     json.redacted = true
@@ -65,5 +71,6 @@ export function actorLabel(actor) {
   if (!actor) return 'Unknown'
   if (actor.realm === 'admin') return `${actor.name} (${ADMIN_ROLES[actor.role] ?? actor.role})`
   if (actor.realm === 'system') return 'PGBook system'
+  if (actor.realm === 'resident') return `${actor.name || 'Tenant'} (tenant app)`
   return actor.name || 'Unknown'
 }

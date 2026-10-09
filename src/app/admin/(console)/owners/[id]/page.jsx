@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { ArrowLeft, CalendarPlus, LogOut, Ban, RotateCcw, Lock, RefreshCw } from 'lucide-react'
+import { ArrowLeft, CalendarPlus, LogOut, Ban, RotateCcw, Lock, RefreshCw, BadgeIndianRupee } from 'lucide-react'
 import { adminApi } from '@/utils/adminApi'
 import { useToast } from '@/context/ToastContext'
 import { describeEvent, deviceLabel } from '@/utils/auditText'
@@ -10,9 +10,9 @@ import Spinner from '@/components/ui/Spinner'
 import Pill from '@/components/admin/Pill'
 import ReasonDialog from '@/components/ui/ReasonDialog'
 import { dateTime, planState, relative } from '@/components/admin/format'
-import { formatDate } from '@/utils/helpers'
+import { formatCurrency, formatDate } from '@/utils/helpers'
 
-const TABS = ['overview', 'activity', 'security']
+const TABS = ['overview', 'billing', 'activity', 'security']
 
 function Stat({ label, value, sub }) {
   return (
@@ -79,6 +79,8 @@ export default function OwnerDetailPage() {
   const [tab, setTab] = useState('overview')
   const [dialog, setDialog] = useState(null) // extendTrial | forceLogout | suspend | reactivate
   const [days, setDays] = useState(7)
+  const [planChoice, setPlanChoice] = useState('pro')
+  const [planUntil, setPlanUntil] = useState('')
 
   const load = useCallback(async () => {
     try {
@@ -103,7 +105,7 @@ export default function OwnerDetailPage() {
     return <div className="flex justify-center py-24">{error ? <p className="text-rose-600 text-sm">{error}</p> : <Spinner size={26} />}</div>
   }
 
-  const { owner, usage, logins, pendingApprovals, allowed } = data
+  const { owner, usage, logins, pendingApprovals, allowed, billing } = data
   const p = planState(owner)
   const suspended = owner.status === 'suspended'
   const btn = 'flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-xl border transition-colors'
@@ -129,6 +131,9 @@ export default function OwnerDetailPage() {
           <div className="flex flex-wrap gap-2 shrink-0">
             {allowed.extendTrialDays > 0 && owner.plan === 'trial' && (
               <button onClick={() => setDialog('extendTrial')} className={`${btn} border-slate-200 text-slate-700 hover:border-slate-300`}><CalendarPlus size={15} /> Extend trial</button>
+            )}
+            {allowed.setPlan && (
+              <button onClick={() => setDialog('setPlan')} className={`${btn} border-slate-200 text-slate-700 hover:border-slate-300`}><BadgeIndianRupee size={15} /> Set plan</button>
             )}
             {allowed.forceLogout && (
               <button onClick={() => setDialog('forceLogout')} className={`${btn} border-slate-200 text-slate-700 hover:border-slate-300`}><LogOut size={15} /> Sign out sessions</button>
@@ -199,6 +204,44 @@ export default function OwnerDetailPage() {
         </div>
       )}
 
+      {tab === 'billing' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <section className="bg-white rounded-2xl border border-slate-200 p-5">
+            <h2 className="font-semibold text-slate-900 text-sm mb-3">Subscription</h2>
+            <dl className="space-y-2 text-sm">
+              {[
+                ['Plan', owner.planLabel],
+                ['Status', <Pill key="s" tone={billing.readOnly ? 'suspended' : billing.status === 'past_due' ? 'expired' : 'active'}>{billing.statusLabel}</Pill>],
+                ['Billing', billing.provider === 'manual' ? 'Set by PGBook' : billing.provider ? `${billing.provider} · ${billing.interval}` : '—'],
+                ['Period ends', billing.currentPeriodEnd ? formatDate(billing.currentPeriodEnd) : '—'],
+                ['Cancels at period end', billing.cancelAtPeriodEnd ? 'Yes' : 'No'],
+                ...(billing.pastDueSince ? [['Payment failing since', formatDate(billing.pastDueSince)], ['Read-only from', formatDate(billing.graceUntil)]] : []),
+                ...(billing.readOnly ? [['Read-only since', formatDate(billing.readOnlySince)], ['Data kept until', formatDate(billing.retentionUntil)]] : []),
+                ['Limits', `${billing.limits.tenants ?? '∞'} tenants · ${billing.limits.properties} properties · ${billing.limits.staff} staff`],
+              ].map(([k, v]) => (
+                <div key={k} className="flex justify-between gap-3">
+                  <dt className="text-slate-500 shrink-0">{k}</dt>
+                  <dd className="text-slate-900 text-right min-w-0">{v}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+          <section className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+            <h2 className="font-semibold text-slate-900 text-sm px-5 py-3.5 border-b border-slate-100">PGBook invoices</h2>
+            <ul className="divide-y divide-slate-100">
+              {billing.invoices.map(i => (
+                <li key={i.id} className="px-5 py-3 flex items-center justify-between gap-3 text-sm">
+                  <span className="text-slate-900 font-medium">{i.number}</span>
+                  <span className="text-slate-500">{formatDate(i.issuedAt)} · {i.plan}</span>
+                  <span className="text-slate-900 tabular-nums">{formatCurrency(i.total)}</span>
+                </li>
+              ))}
+              {billing.invoices.length === 0 && <li className="px-5 py-10 text-center text-sm text-slate-400">No invoices yet.</li>}
+            </ul>
+          </section>
+        </div>
+      )}
+
       {tab === 'activity' && <ActivityTab ownerId={owner.id} />}
 
       {tab === 'security' && (
@@ -222,6 +265,30 @@ export default function OwnerDetailPage() {
             {logins.length === 0 && <li className="px-4 py-10 text-center text-sm text-slate-400">No sign-ins recorded yet.</li>}
           </ul>
         </section>
+      )}
+
+      {allowed.setPlan && (
+        <ReasonDialog
+          isOpen={dialog === 'setPlan'}
+          title="Set plan manually"
+          description="For an offline payment, a partner deal or goodwill. No online subscription is created. With an end date the plan lapses then and the account becomes read-only."
+          confirmLabel="Set plan"
+          onSubmit={({ reason }) => act('setPlan', { reason, plan: planChoice, until: planUntil || undefined })}
+          onClose={() => setDialog(null)}
+        >
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="set-plan" className="block text-slate-700 text-sm font-medium mb-1.5">Plan</label>
+              <select id="set-plan" value={planChoice} onChange={e => setPlanChoice(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm">
+                {allowed.setPlan.map(pl => <option key={pl.id} value={pl.id}>{pl.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="set-until" className="block text-slate-700 text-sm font-medium mb-1.5">Until <span className="text-slate-400 font-normal">(optional)</span></label>
+              <input id="set-until" type="date" value={planUntil} onChange={e => setPlanUntil(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm" />
+            </div>
+          </div>
+        </ReasonDialog>
       )}
 
       <ReasonDialog

@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Gauge, Inbox, Building, ScrollText, ShieldHalf, UserCog, LogOut, Menu, X } from 'lucide-react'
+import { Gauge, Inbox, Building, ScrollText, ShieldHalf, UserCog, LogOut, Menu, X, IndianRupee } from 'lucide-react'
 import { useAdmin } from '@/context/AdminContext'
 import { adminApi } from '@/utils/adminApi'
 import Spinner from '@/components/ui/Spinner'
@@ -11,6 +11,7 @@ const NAV = [
   { label: 'Command Center', path: '/admin', icon: Gauge, exact: true, capability: 'platform.view' },
   { label: 'Approvals', path: '/admin/approvals', icon: Inbox, capability: 'approvals.view', badge: true },
   { label: 'Owners', path: '/admin/owners', icon: Building, capability: 'orgs.view' },
+  { label: 'Revenue', path: '/admin/revenue', icon: IndianRupee, capability: 'revenue.view' },
   { label: 'Audit Log', path: '/admin/audit', icon: ScrollText, capability: 'audit.view' },
   { label: 'Admin Team', path: '/admin/team', icon: ShieldHalf, capability: 'admins.view' },
   { label: 'My Account', path: '/admin/account', icon: UserCog },

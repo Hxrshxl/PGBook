@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { ADMIN_COOKIE, SESSION_COOKIE, verifyAdminToken, verifyToken } from '@/lib/auth'
+import { ADMIN_COOKIE, RESIDENT_COOKIE, SESSION_COOKIE, verifyAdminToken, verifyResidentToken, verifyToken } from '@/lib/auth'
 
 const ADMIN_PUBLIC = ['/admin/login', '/admin/accept-invite']
 
@@ -22,6 +22,14 @@ export async function middleware(request) {
     return response
   }
 
+  // Tenant app: /t is the phone sign-in, everything under it needs a resident session.
+  if (pathname === '/t' || pathname.startsWith('/t/')) {
+    const resident = await verifyResidentToken(request.cookies.get(RESIDENT_COOKIE)?.value).catch(() => null)
+    if (!resident && pathname !== '/t') return NextResponse.redirect(new URL('/t', request.url))
+    if (resident && pathname === '/t') return NextResponse.redirect(new URL('/t/home', request.url))
+    return NextResponse.next()
+  }
+
   const session = await verifyToken(request.cookies.get(SESSION_COOKIE)?.value).catch(() => null)
   if (pathname.startsWith('/dashboard') && !session) {
     const url = new URL('/login', request.url)
@@ -35,5 +43,5 @@ export async function middleware(request) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/login', '/signup', '/admin', '/admin/:path*'],
+  matcher: ['/dashboard/:path*', '/login', '/signup', '/admin', '/admin/:path*', '/t', '/t/:path*'],
 }

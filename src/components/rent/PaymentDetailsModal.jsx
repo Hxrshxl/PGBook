@@ -94,7 +94,7 @@ export default function PaymentDetailsModal({ payment, tenantName, pendingCash =
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-slate-900">{formatCurrency(entry.amount)} <span className="text-slate-400 font-normal">· {PAYMENT_METHOD_LABELS[entry.method] ?? entry.method}</span></p>
                     <p className="text-xs text-slate-400 truncate">
-                      {formatDate(entry.date)}{entry.note ? ` · ${entry.note}` : ''}{entry.recordedBy?.name ? ` · by ${entry.recordedBy.name}` : ''}
+                      {formatDate(entry.date)}{entry.note ? ` · ${entry.note}` : ''}{entry.recordedBy?.name ? ` · ${entry.source === 'claim' ? 'confirmed' : 'by'} ${entry.recordedBy.name}` : ''}{entry.source === 'claim' ? ' · tenant app' : entry.source === 'deposit' ? ' · from deposit' : ''}
                     </p>
                   </div>
                   {!entry.legacy && (removeDirect || removeByRequest) && confirmingEntry !== entry.id && (

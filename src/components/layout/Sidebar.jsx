@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   Building2, LayoutDashboard, Users, IndianRupee, Zap, BedDouble, Wallet, Inbox, UsersRound,
-  FileText, Bell, MessageSquare, BarChart3, History, Settings, LogOut, X, ScrollText,
+  FileText, Bell, MessageSquare, BarChart3, History, Settings, LogOut, X, ScrollText, CreditCard, Megaphone, PiggyBank,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useAppData } from '@/context/AppContext'
@@ -20,17 +20,21 @@ const navItems = [
   { label: 'Receipts',         icon: FileText,        path: '/dashboard/receipts',   capability: 'rent.view' },
   { label: 'Reminders',        icon: Bell,            path: '/dashboard/reminders',  capability: 'rent.view' },
   { label: 'Complaints',       icon: MessageSquare,   path: '/dashboard/complaints', capability: 'complaints.view' },
+  { label: 'Notices',          icon: Megaphone,       path: '/dashboard/notices',    capability: 'notices.view' },
+  { label: 'Deposits',         icon: PiggyBank,       path: '/dashboard/deposits',   capability: 'deposits.view' },
   { label: 'Analytics',        icon: BarChart3,       path: '/dashboard/analytics',  capability: 'reports.view' },
   { label: 'Tenant History',   icon: History,         path: '/dashboard/history',    capability: 'tenants.view' },
   { label: 'Team',             icon: UsersRound,      path: '/dashboard/team',       capability: 'team.manage' },
   { label: 'Activity',         icon: ScrollText,      path: '/dashboard/activity',   capability: 'activity.view' },
+  { label: 'Subscription',     icon: CreditCard,      path: '/dashboard/billing',    capability: 'billing.manage' },
 ]
 
 export default function Sidebar({ onClose }) {
   const pathname = usePathname()
   const { user, access, can, logout } = useAuth()
   const { approvals } = useAppData()
-  const waiting = (approvals?.counts?.requests ?? 0) + (approvals?.counts?.cash ?? 0)
+  const c = approvals?.counts ?? {}
+  const waiting = (c.requests ?? 0) + (c.cash ?? 0) + (c.claims ?? 0) + (c.moveOuts ?? 0) + (c.settlements ?? 0)
 
   async function handleLogout() {
     await logout()

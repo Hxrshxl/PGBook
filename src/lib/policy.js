@@ -21,10 +21,11 @@ export const ADMIN_ROLE_DESCRIPTIONS = {
 const ADMIN_CAPABILITIES = {
   super_admin: [
     'platform.view', 'orgs.view', 'orgs.extendTrial', 'orgs.forceLogout', 'orgs.suspend', 'orgs.reactivate',
-    'audit.view', 'audit.export', 'admins.view', 'admins.request', 'approvals.view',
+    'audit.view', 'audit.export', 'admins.view', 'admins.request', 'approvals.view', 'revenue.view', 'orgs.setPlan',
   ],
   billing_admin: [
     'platform.view', 'orgs.view', 'orgs.extendTrial', 'orgs.suspend', 'orgs.reactivate', 'audit.view', 'approvals.view',
+    'revenue.view', 'orgs.setPlan',
   ],
   support_agent: [
     'platform.view', 'orgs.view', 'orgs.extendTrial', 'orgs.forceLogout',
@@ -34,7 +35,7 @@ const ADMIN_CAPABILITIES = {
     'platform.view', 'orgs.view', 'orgs.forceLogout', 'orgs.suspend', 'orgs.reactivate',
     'audit.view', 'audit.export', 'admins.view', 'approvals.view',
   ],
-  analyst: ['platform.view'],
+  analyst: ['platform.view', 'revenue.view'],
 }
 
 export const ORG_ROLES = {
@@ -58,22 +59,24 @@ const ORG_STAFF_CAPABILITIES = {
     'rent.view', 'rent.manage', 'rent.record', 'rent.adjust', 'rent.requestRemoveEntry', 'rent.lateFees',
     'cash.confirm', 'bills.view', 'bills.manage', 'expenses.view', 'expenses.manage',
     'complaints.view', 'complaints.manage', 'reports.view', 'settings.view', 'activity.view', 'approvals.view',
+    'claims.review', 'notices.view', 'notices.manage', 'deposits.view', 'deposits.manage',
   ],
   accountant: [
     'dashboard.view', 'tenants.view', 'rooms.view', 'rent.view', 'rent.manage', 'rent.record',
     'rent.requestAdjust', 'rent.requestRemoveEntry', 'rent.lateFees', 'cash.confirm',
     'bills.view', 'bills.manage', 'expenses.view', 'expenses.manage', 'reports.view', 'settings.view', 'approvals.view',
+    'claims.review', 'deposits.view', 'deposits.manage', 'notices.view',
   ],
   caretaker: [
     'dashboard.view', 'tenants.view', 'rooms.view', 'rent.view', 'cash.collect',
-    'complaints.view', 'complaints.manage', 'settings.view', 'approvals.view',
+    'complaints.view', 'complaints.manage', 'settings.view', 'approvals.view', 'notices.view', 'notices.manage',
   ],
 }
 
 // Only the owner can do these.
 const OWNER_ONLY_CAPABILITIES = [
   'tenants.delete', 'rent.removeEntry', 'rent.adjustAny', 'team.manage', 'properties.manage',
-  'settings.manage', 'approvals.decide', 'data.export',
+  'settings.manage', 'approvals.decide', 'data.export', 'billing.manage', 'deposits.approve',
 ]
 
 const ORG_CAPABILITIES = {

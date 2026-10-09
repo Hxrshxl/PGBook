@@ -7,6 +7,7 @@ import { resolveRoom } from '@/lib/rooms'
 import { syncOpenDues } from '@/lib/billing'
 import { tenantTarget } from '@/lib/auditTargets'
 import { can } from '@/lib/policy'
+import { assertWithinLimit } from '@/lib/planLimits'
 import { getCurrentMonth, isValidDate, todayISO } from '@/utils/helpers'
 
 async function findTenant(scope, id) {
@@ -70,6 +71,7 @@ export const PATCH = route(async ({ request, params, org, scope, actor, audit })
     tenant.status = 'vacated'
     tenant.moveOutDate = moveOutDate
   } else if (status === 'active') {
+    if (tenant.status !== 'active') await assertWithinLimit(org, 'tenants')
     if (tenant.status !== 'active' && tenant.roomId) {
       // Their bed may have been given to someone else since they left.
       const property = await scope.property(tenant.propertyId)

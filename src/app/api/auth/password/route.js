@@ -28,4 +28,4 @@ export const PUT = route(async ({ request, user, audit }) => {
 
   const token = await signToken({ id: account._id.toString(), tokenVersion: account.tokenVersion })
   return setSessionCookie(json({ ok: true }), token)
-})
+}, { readOnlyOk: true })

@@ -33,8 +33,17 @@ import Expense from './models/Expense.js'
 import CashCollection from './models/CashCollection.js'
 import Membership from './models/Membership.js'
 import ApprovalRequest, { APPROVAL_TTL_MS } from './models/ApprovalRequest.js'
+import Resident from './models/Resident.js'
+import PaymentClaim from './models/PaymentClaim.js'
+import Notice from './models/Notice.js'
+import MoveOutRequest from './models/MoveOutRequest.js'
+import DepositSettlement from './models/DepositSettlement.js'
+import Invoice from './models/Invoice.js'
+import Notification from './models/Notification.js'
+import { issueInvoice } from './invoices.js'
 import {
   calcLateFee, formatCurrency, formatDate, formatMonth, getBalance, getPrevMonth, PAYMENT_METHOD_LABELS, roundMoney, splitAmount, todayISO,
+  toWhatsAppNumber,
 } from '../utils/helpers.js'
 
 const DEMO_EMAIL = 'demo@pgbook.app'
@@ -67,11 +76,11 @@ const STAFF = [
 ]
 
 await mongoose.connect(process.env.MONGODB_URI)
-const MODELS = [User, Tenant, Payment, UtilityBill, Complaint, Property, Room, Expense, CashCollection, Membership, ApprovalRequest]
+const MODELS = [User, Tenant, Payment, UtilityBill, Complaint, Property, Room, Expense, CashCollection, Membership, ApprovalRequest, Resident, PaymentClaim, Notice, MoveOutRequest, DepositSettlement, Invoice, Notification]
 await Promise.all(MODELS.map(m => m.syncIndexes()))
 
 const BY_USER = [Tenant, Payment, UtilityBill, Complaint]       // org field: userId
-const BY_ORG = [Property, Room, Expense, CashCollection]          // org field: orgId
+const BY_ORG = [Property, Room, Expense, CashCollection, PaymentClaim, Notice, MoveOutRequest, DepositSettlement, Notification] // org field: orgId
 let targetUser = null
 if (!IS_DEMO) {
   targetUser = await User.findOne({ email: TARGET_EMAIL })
@@ -823,10 +832,105 @@ if (WITH_STAFF) {
   }
 }
 
+// ── Tenant app: residents, notices, payment reports, move-out, deposit settlement ──
+
+const DAY_MS = 86400000
+const DEMO_TENANT_PHONE = '9876500001'
+const addDaysISO = (iso, n) => new Date(Date.parse(`${iso}T00:00:00Z`) + n * DAY_MS).toISOString().slice(0, 10)
+const dueTotal = p => roundMoney(p.rentAmount + p.utilityShare + p.extraCharges.reduce((s, c) => s + c.amount, 0) + p.lateFee)
+const paidSoFar = p => roundMoney(p.transactions.reduce((s, t) => s + t.amount, 0))
+
+const usedPayments = new Set([...cashCollections.map(c => String(c.paymentId)), ...approvals.map(a => String(a.payload.paymentId))])
+const mainActive = tenants.filter(t => t.building === MAIN && t.status === 'active')
+const unpaidNow = payments.filter(p => p.month === M0 && p.tenant.building === MAIN && p.tenant.status === 'active' && p.transactions.length === 0 && !usedPayments.has(String(p._id)))
+
+// The demo resident: this month's rent still due, on a memorable number.
+const demoTenant = unpaidNow[0]?.tenant ?? mainActive[0]
+if (!usedPhones.has(DEMO_TENANT_PHONE)) {
+  demoTenant.phone = DEMO_TENANT_PHONE
+  usedPhones.add(DEMO_TENANT_PHONE)
+}
+demoTenant.appUser = true
+for (const t of shuffle(mainActive).slice(0, Math.round(mainActive.length * 0.4))) t.appUser = true
+for (const t of tenants.filter(x => x.building !== MAIN && x.status === 'active').slice(0, 6)) t.appUser = true
+
+const notices = [
+  { building: MAIN, title: 'Water supply off on Sunday, 10 am – 2 pm', body: 'The overhead tanks are being cleaned. Please store water the night before.', requiresAck: true, daysAgo: 2 },
+  { building: MAIN, title: 'Diwali dinner on the terrace 🪔', body: 'Special dinner on Diwali night at 8 pm. Everyone is welcome — tell the kitchen by Thursday if you will join.', pinned: true, daysAgo: 6 },
+  { building: null, title: 'Pay rent and raise complaints in the PGBook app', body: 'Sign in with your mobile number at /t. You can pay by UPI, tell us when you have paid, download receipts and raise complaints with photos.', daysAgo: 21 },
+  { building: BUILDINGS[1], title: 'Wi-Fi upgrade on Thursday night', body: 'Internet will be off from 1 am to 3 am while Airtel upgrades the line.', requiresAck: true, daysAgo: 1 },
+].map(n => {
+  const createdAt = new Date(NOW.getTime() - n.daysAgo * DAY_MS)
+  const audience = tenants.filter(t => t.appUser && t.status === 'active' && (!n.building || t.building === n.building))
+  return {
+    orgId: userId, propertyIds: n.building ? [n.building.propertyId] : [], title: n.title, body: n.body, pinned: !!n.pinned, requiresAck: !!n.requiresAck,
+    acks: n.requiresAck ? audience.filter(() => chance(0.6)).map(t => ({ tenantId: t._id, name: t.name, at: new Date(Math.min(NOW.getTime(), createdAt.getTime() + int(1, 30) * 3600000)) })) : [],
+    createdBy: OWNER_ACTOR, status: 'active', createdAt, updatedAt: createdAt,
+  }
+})
+
+// "I've paid" reports waiting for the owner (one with a reused UTR, which gets flagged).
+const claimTenants = unpaidNow.slice(1, 3)
+const sharedUtr = digits(12)
+const claims = claimTenants.map((p, i) => {
+  p.tenant.appUser = true
+  const createdAt = new Date(NOW.getTime() - int(2, 20) * 3600000)
+  return {
+    orgId: userId, propertyId: MAIN.propertyId, tenantId: p.tenant._id, tenant: p.tenant, paymentId: p._id, tenantName: p.tenant.name, room: p.tenant.room,
+    month: M0, amount: dueTotal(p), date: TODAY, method: 'upi', utr: sharedUtr, note: i === 0 ? 'Paid through GPay' : '',
+    flags: i === 1 ? ['duplicate_utr'] : [], status: 'pending', createdAt, updatedAt: createdAt,
+  }
+})
+
+// A move-out notice waiting to be acknowledged (shorter than the 30-day notice period).
+const leaver = mainActive.find(t => t.appUser && t !== demoTenant && !claimTenants.some(p => p.tenant === t))
+const moveOuts = leaver ? [{
+  orgId: userId, propertyId: MAIN.propertyId, tenantId: leaver._id, tenant: leaver, tenantName: leaver.name, room: leaver.room,
+  moveOutDate: addDaysISO(TODAY, 20), earliestDate: addDaysISO(TODAY, 30), reason: 'Moving to Hyderabad for a new job',
+  status: 'pending', createdAt: new Date(NOW.getTime() - 5 * 3600000), updatedAt: new Date(NOW.getTime() - 5 * 3600000),
+}] : []
+
+// A deposit settlement for someone who just moved out, waiting for the owner's approval.
+const recentLeaver = tenants
+  .filter(t => t.building === MAIN && t.status === 'vacated' && t.depositAmount > 0 && t.moveOutDate >= `${getPrevMonth(M0)}-01`)
+  .filter(t => !payments.some(p => p.tenant === t && p.transactions.some(tx => /security deposit/.test(tx.note ?? ''))))
+  .sort((a, b) => b.moveOutDate.localeCompare(a.moveOutDate))[0]
+const settlements = []
+if (recentLeaver) {
+  const unpaidDues = payments.filter(p => p.tenant === recentLeaver && dueTotal(p) - paidSoFar(p) > 0.5)
+    .map(p => ({ paymentId: p._id, month: p.month, amount: roundMoney(dueTotal(p) - paidSoFar(p)) }))
+  const deductions = [{ label: 'Room cleaning & touch-up painting', amount: 1500 }]
+  const owed = unpaidDues.reduce((s, d) => s + d.amount, 0) + 1500
+  const createdAt = new Date(Math.max(at(recentLeaver.moveOutDate, 18).getTime(), NOW.getTime() - 3 * DAY_MS))
+  settlements.push({
+    orgId: userId, propertyId: MAIN.propertyId, tenantId: recentLeaver._id, tenantName: recentLeaver.name, room: recentLeaver.room,
+    moveOutDate: recentLeaver.moveOutDate, deposit: recentLeaver.depositAmount, unpaidDues, deductions,
+    refundAmount: roundMoney(recentLeaver.depositAmount - owed), notes: 'Keys returned. Wall near the window needs a touch-up.',
+    status: WITH_STAFF ? 'pending_approval' : 'draft', preparedBy: WITH_STAFF ? staffActor('manager') : OWNER_ACTOR, createdAt, updatedAt: createdAt,
+  })
+}
+
+// Recent complaints from app users came in through the app.
+const tenantById = new Map(tenants.map(t => [String(t._id), t]))
+for (const c of complaints) {
+  const t = tenantById.get(String(c.tenantId))
+  if (t?.appUser && NOW - c.createdAt < 45 * DAY_MS) {
+    c.source = 'resident'
+    c.okToEnter = chance(0.7)
+    c.appTenant = t
+  }
+}
+
 // ── Write to the database ─────────────────────────────────────
 
-/** Removes an organization's business data (and, for the demo, its staff logins). */
+/** Removes an organization's business data (and, for the demo, its staff logins, invoices and residents). */
 async function wipeOrg(orgId, { removeTeam }) {
+  if (removeTeam) {
+    const phones = (await Tenant.find({ userId: orgId }).select('phoneKey').lean()).map(t => t.phoneKey).filter(Boolean)
+    const elsewhere = new Set((await Tenant.find({ phoneKey: { $in: phones }, userId: { $ne: orgId } }).select('phoneKey').lean()).map(t => t.phoneKey))
+    await Resident.deleteMany({ phone: { $in: phones.filter(p => !elsewhere.has(p)) } })
+    await Invoice.deleteMany({ orgId })
+  }
   await Promise.all([
     ...BY_USER.map(m => m.deleteMany({ userId: orgId })),
     ...BY_ORG.map(m => m.deleteMany({ orgId })),
@@ -894,9 +998,22 @@ for (const b of BUILDINGS) {
   }
 }
 
+// Residents (tenant app logins) for the app users, keyed by phone number.
+for (const t of tenants.filter(x => x.appUser)) {
+  const phone = toWhatsAppNumber(t.phone)
+  const lastSeen = new Date(NOW.getTime() - int(1, 96) * 3600000)
+  const resident = await Resident.findOneAndUpdate(
+    { phone },
+    { $setOnInsert: { phone, name: t.name, consentAt: at(t.moveInDate > MONTHS[MONTHS.length - 3] ? t.moveInDate : dateIn(MONTHS[MONTHS.length - 3], 2), 20) }, $set: { lastLoginAt: lastSeen, lastSeenAt: lastSeen } },
+    { upsert: true, new: true },
+  )
+  t.residentId = resident._id
+  t.portalInvitedAt = resident.consentAt
+}
+
 // timestamps: false keeps the historical createdAt / updatedAt set above.
 // insertMany still validates, so the Payment model derives amountPaid, paidDate and status.
-await Tenant.insertMany(tenants.map(({ habit: _h, building, roomRef, ...t }) => ({
+await Tenant.insertMany(tenants.map(({ habit: _h, building, roomRef, appUser: _a, ...t }) => ({
   ...t,
   propertyId: building.propertyId,
   roomId: roomRef._id,
@@ -905,8 +1022,33 @@ await Tenant.insertMany(tenants.map(({ habit: _h, building, roomRef, ...t }) => 
 })), { timestamps: false })
 await UtilityBill.insertMany(bills, { timestamps: false })
 await Payment.insertMany(payments.map(({ tenant: _t, waivedFee: _w, ...p }) => p), { timestamps: false })
-await Complaint.insertMany(complaints, { timestamps: false })
+await Complaint.insertMany(complaints.map(({ appTenant, ...c }) => ({ ...c, residentId: appTenant?.residentId ?? null })), { timestamps: false })
 await Expense.insertMany(expenses.map(e => ({ ...e, updatedAt: e.createdAt })), { timestamps: false })
+await Notice.insertMany(notices, { timestamps: false })
+await PaymentClaim.insertMany(claims.map(({ tenant, ...c }) => ({ ...c, residentId: tenant.residentId })), { timestamps: false })
+await MoveOutRequest.insertMany(moveOuts.map(({ tenant, ...m }) => ({ ...m, residentId: tenant.residentId })), { timestamps: false })
+await DepositSettlement.insertMany(settlements, { timestamps: false })
+
+// The demo owner pays for Multi-PG (test-mode subscription) and has six months of invoices.
+if (IS_DEMO) {
+  const periodStart = at(dateIn(M0, 3), 10)
+  const start = periodStart > NOW ? at(dateIn(getPrevMonth(M0), 3), 10) : periodStart
+  const end = new Date(start)
+  end.setMonth(end.getMonth() + 1)
+  owner.billing = {
+    status: 'active', provider: 'mock', subscriptionId: 'mock_sub_demo', interval: 'monthly',
+    currentPeriodStart: start, currentPeriodEnd: end, cancelAtPeriodEnd: false,
+    details: { legalName: 'Sunrise Hospitality', address: MAIN.property.address, stateCode: '29', email: DEMO_EMAIL },
+  }
+  await owner.save()
+  for (let i = 5; i >= 0; i--) {
+    const paidAt = at(dateIn(MONTHS[MONTHS.length - 1 - i], 3), 10)
+    if (paidAt > NOW) continue
+    const periodEnd = new Date(paidAt)
+    periodEnd.setMonth(periodEnd.getMonth() + 1)
+    await issueInvoice(owner, { plan: 'multi', interval: 'monthly', total: 999, periodStart: paidAt, periodEnd, provider: 'mock', providerPaymentId: `mock_pay_demo_${paidAt.toISOString().slice(0, 7)}`, paidAt })
+  }
+}
 
 if (WITH_STAFF) {
   const old = await User.find({ email: { $in: STAFF.map(s => s.email) }, kind: 'staff' }).select('_id')
@@ -951,5 +1093,8 @@ console.log(`  Utility bills: ${bills.length} · Expenses: ${expenses.length} ·
 if (WITH_STAFF) {
   console.log(`  Approvals    : ${approvals.filter(a => a.status === 'pending').length} waiting · cash handovers: ${cashCollections.filter(c => c.status === 'pending').length} waiting`)
 }
+console.log(`  Tenant app   : ${tenants.filter(t => t.appUser).length} residents · ${notices.length} notices · ${claims.length} payment reports and ${moveOuts.length} move-out notice waiting · ${settlements.length} deposit settlement to approve`)
+console.log(`                 try it at /t with ${demoTenant.phone} (${demoTenant.name}, Room ${demoTenant.room}) — in local dev mode the code is shown on screen`)
+if (IS_DEMO) console.log('  Subscription : Multi-PG, test-mode billing, 6 months of invoices')
 console.log('')
 await mongoose.disconnect()

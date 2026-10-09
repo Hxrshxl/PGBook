@@ -1,11 +1,11 @@
 'use client'
 import Link from 'next/link'
-import { Pencil, LogOut, History, Phone, RotateCcw, Trash2 } from 'lucide-react'
+import { Pencil, LogOut, History, Phone, RotateCcw, Trash2, Smartphone, DoorOpen } from 'lucide-react'
 import Badge from '@/components/ui/Badge'
 import { chargesTotal, formatCurrency, formatDate } from '@/utils/helpers'
 
 // Action handlers are optional: a button only shows when the role may use it.
-export default function TenantCard({ tenant, propertyName, onEdit, onVacate, onReactivate, onDelete }) {
+export default function TenantCard({ tenant, propertyName, onEdit, onVacate, onReactivate, onDelete, onInvite }) {
   const { name, room, rentAmount, depositAmount, status, moveInDate, moveOutDate, phone } = tenant
   const charges = tenant.recurringCharges ?? []
   const btn = 'flex-1 flex items-center justify-center gap-1.5 text-xs text-slate-500 py-1.5 rounded-lg transition-colors'
@@ -50,6 +50,16 @@ export default function TenantCard({ tenant, propertyName, onEdit, onVacate, onR
         <a href={`tel:${phone}`} className="flex items-center gap-1.5 text-slate-500 hover:text-indigo-600 w-fit">
           <Phone size={12} /> {phone}
         </a>
+        {status === 'active' && tenant.noticeGivenAt && (
+          <p className="flex items-center gap-1.5 text-amber-700"><DoorOpen size={12} /> On notice{tenant.expectedMoveOut ? ` · leaving ${formatDate(tenant.expectedMoveOut)}` : ''}</p>
+        )}
+        {status === 'active' && (
+          tenant.residentId
+            ? <p className="flex items-center gap-1.5 text-emerald-700"><Smartphone size={12} /> Uses the tenant app</p>
+            : onInvite
+              ? <button onClick={() => onInvite(tenant)} className="flex items-center gap-1.5 text-indigo-600 hover:text-indigo-500 w-fit"><Smartphone size={12} /> {tenant.portalInvitedAt ? 'Invite again to the app' : 'Invite to the tenant app'}</button>
+              : null
+        )}
       </div>
 
       <div className="flex items-center gap-1 pt-3 border-t border-slate-50 mt-auto">

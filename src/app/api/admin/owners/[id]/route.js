@@ -4,12 +4,14 @@ import Complaint from '@/lib/models/Complaint'
 import UtilityBill from '@/lib/models/UtilityBill'
 import AuditEvent from '@/lib/models/AuditEvent'
 import ApprovalRequest from '@/lib/models/ApprovalRequest'
+import Invoice from '@/lib/models/Invoice'
 import { json } from '@/lib/api'
 import { adminRoute } from '@/lib/adminApi'
 import { findOrg } from '@/lib/orgAdmin'
 import { ADMIN_REALM, approvalView } from '@/lib/approvals'
 import { can, maxTrialExtension } from '@/lib/policy'
-import { PLANS } from '@/lib/plans'
+import { PAID_PLAN_IDS, PLANS } from '@/lib/plans'
+import { billingState, limitsFor, STATUS_LABELS } from '@/lib/subscription'
 import { propertyFacts, teamSize } from '@/lib/orgStats'
 import { getCurrentMonth, todayISO } from '@/utils/helpers'
 
@@ -47,6 +49,9 @@ export const GET = adminRoute(async ({ params, actor }) => {
   const beds = facts?.beds ?? 0
   const staff = await teamSize(user._id)
   const active = byStatus.active ?? 0
+  const billing = billingState(user)
+  const limits = limitsFor(billing)
+  const invoices = await Invoice.find({ orgId: user._id }).sort({ issuedAt: -1 }).limit(12)
 
   return json({
     owner: {
@@ -72,7 +77,7 @@ export const GET = adminRoute(async ({ params, actor }) => {
       vacatedTenants: byStatus.vacated ?? 0,
       beds,
       occupancy: beds ? Math.min(100, Math.round((active / beds) * 100)) : null,
-      planTenantLimit: Number.isFinite(PLANS[user.plan]?.maxTenants) ? PLANS[user.plan].maxTenants : null,
+      planTenantLimit: Number.isFinite(limits.tenants) ? limits.tenants : null,
       duesThisMonth,
       paymentsRecorded30: payments30[0]?.n ?? 0,
       openComplaints,
@@ -80,10 +85,26 @@ export const GET = adminRoute(async ({ params, actor }) => {
       utilityBills: bills,
       ownerActions30: ownerEvents30,
     },
+    billing: {
+      status: billing.status,
+      statusLabel: STATUS_LABELS[billing.status],
+      readOnly: billing.readOnly,
+      interval: user.billing?.interval ?? null,
+      provider: user.billing?.provider ?? null,
+      currentPeriodEnd: user.billing?.currentPeriodEnd ?? null,
+      cancelAtPeriodEnd: !!user.billing?.cancelAtPeriodEnd,
+      pastDueSince: billing.pastDueSince ?? null,
+      graceUntil: billing.graceUntil ?? null,
+      readOnlySince: billing.readOnlySince ?? null,
+      retentionUntil: billing.retentionUntil ?? null,
+      limits: { tenants: Number.isFinite(limits.tenants) ? limits.tenants : null, properties: limits.properties, staff: limits.staff },
+      invoices: invoices.map(i => ({ id: i._id.toString(), number: i.number, issuedAt: i.issuedAt, total: i.total, plan: i.plan })),
+    },
     logins: logins.map(e => ({ id: e._id.toString(), action: e.action, at: e.createdAt, ip: e.ip, userAgent: e.userAgent })),
     pendingApprovals: pending.map(a => approvalView(a, actor)),
     allowed: {
       extendTrialDays: maxTrialExtension(actor),
+      setPlan: can(actor, 'orgs.setPlan') ? PAID_PLAN_IDS.map(id => ({ id, label: PLANS[id].label })) : null,
       forceLogout: can(actor, 'orgs.forceLogout'),
       suspend: can(actor, 'orgs.suspend') ? 'direct' : can(actor, 'orgs.requestSuspend') ? 'request' : null,
       reactivate: can(actor, 'orgs.reactivate') ? 'direct' : can(actor, 'orgs.requestReactivate') ? 'request' : null,

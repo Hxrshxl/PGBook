@@ -5,14 +5,17 @@ import { SignJWT, jwtVerify } from 'jose'
 export const SESSION_COOKIE = 'pgbook_session'      // owners (org realm)
 export const ADMIN_COOKIE = 'pgbook_admin'          // PGBook staff
 export const ADMIN_PRE_COOKIE = 'pgbook_admin_pre'  // password OK, 2FA still pending
+export const RESIDENT_COOKIE = 'pgbook_resident'    // tenants (phone login)
 
 const ORG_AUDIENCE = 'org'
 const ADMIN_AUDIENCE = 'admin'
 const ADMIN_PRE_AUDIENCE = 'admin-pre'
+const RESIDENT_AUDIENCE = 'resident'
 
 const SESSION_MAX_AGE = 60 * 60 * 24 * 30   // 30 days
 export const ADMIN_SESSION_MAX_AGE = 60 * 60 * 8 // 8 hours
 const ADMIN_PRE_MAX_AGE = 60 * 10          // 10 minutes to enter the 2FA code
+const RESIDENT_SESSION_MAX_AGE = 60 * 60 * 24 * 30 // 30 days
 
 function getSecret() {
   const secret = process.env.JWT_SECRET
@@ -72,6 +75,34 @@ export function setSessionCookie(response, token) {
 
 export function clearSessionCookie(response) {
   response.cookies.set(SESSION_COOKIE, '', { httpOnly: true, path: '/', maxAge: 0 })
+  return response
+}
+
+// ── Residents (tenant app) ────────────────────────────────────
+
+export async function signResidentToken({ id, tokenVersion = 0 }) {
+  return sign({ v: tokenVersion }, { subject: id, audience: RESIDENT_AUDIENCE, maxAge: RESIDENT_SESSION_MAX_AGE })
+}
+
+export async function verifyResidentToken(token) {
+  if (!token) return null
+  try {
+    const { payload } = await jwtVerify(token, getSecret(), { algorithms: ['HS256'], audience: RESIDENT_AUDIENCE })
+    return payload.sub ? { id: payload.sub, tokenVersion: payload.v ?? 0 } : null
+  } catch {
+    return null
+  }
+}
+
+export function setResidentCookie(response, token) {
+  response.cookies.set(RESIDENT_COOKIE, token, {
+    httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: RESIDENT_SESSION_MAX_AGE,
+  })
+  return response
+}
+
+export function clearResidentCookie(response) {
+  response.cookies.set(RESIDENT_COOKIE, '', { httpOnly: true, path: '/', maxAge: 0 })
   return response
 }
 

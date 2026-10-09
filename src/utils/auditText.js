@@ -101,14 +101,50 @@ export function describeEvent(e) {
     case 'approval.rejected': return `Rejected: ${e.target?.label ?? ''}`
     case 'approval.cancelled': return `Withdrew request: ${e.target?.label ?? ''}`
     case 'approval.failed': return `Approved but could not apply: ${e.target?.label ?? ''}`
+
+    // Subscription & data
+    case 'billing.checkout_started': return `Started checkout for the ${d.plan} plan (${d.interval})`
+    case 'billing.subscribed': return `Subscribed to the ${d.plan} plan (${d.interval})`
+    case 'billing.renewed': return `Subscription renewed${d.invoice ? ` — invoice ${d.invoice}` : ''}`
+    case 'billing.payment_failed': return 'Subscription payment failed'
+    case 'billing.halted': return 'Subscription stopped after failed payments — account read-only'
+    case 'billing.cancel_requested': return 'Cancelled the subscription (ends at period end)'
+    case 'billing.cancelled': return 'Subscription ended'
+    case 'billing.details_updated': return 'Updated billing details'
+    case 'org.plan_set': return `Plan set to ${d.label ?? d.planTo} by PGBook${d.until && d.until !== 'no end date' ? ` until ${formatDate(String(d.until).slice(0, 10))}` : ''}`
+    case 'data.export': return 'Exported all data'
+    case 'system.daily_jobs': return 'Daily reminders ran'
+
+    // Tenant app
+    case 'claim.submitted': return `Tenant reported a payment${d.amount !== undefined ? ` of ${money(d.amount)}` : ''}${forWho(e)}${monthOf(d)}`
+    case 'claim.withdrawn': return `Tenant withdrew a payment report${forWho(e)}`
+    case 'claim.approved': return `Confirmed a tenant-reported payment${d.amount !== undefined ? ` of ${money(d.amount)}` : ''}${forWho(e)}${monthOf(d)}`
+    case 'claim.rejected': return `Rejected a tenant-reported payment${d.amount !== undefined ? ` of ${money(d.amount)}` : ''}${forWho(e)}`
+    case 'notice.published': return `Published notice “${e.target?.label ?? ''}”`
+    case 'notice.updated': return `Edited notice “${e.target?.label ?? ''}”`
+    case 'notice.archived': return `Took down notice “${e.target?.label ?? ''}”`
+    case 'moveout.requested': return `${e.target?.label ?? 'A tenant'} gave move-out notice${d.moveOutDate ? ` for ${formatDate(d.moveOutDate)}` : ''}${d.shortNotice ? ' (short notice)' : ''}`
+    case 'moveout.withdrawn': return `${e.target?.label ?? 'A tenant'} withdrew their move-out notice`
+    case 'moveout.acknowledged': return `Acknowledged move-out notice${forWho(e)}`
+    case 'moveout.declined': return `Declined move-out notice${forWho(e)}`
+    case 'settlement.drafted': return `Started deposit settlement${forWho(e)}`
+    case 'settlement.edited': return `Edited deposit settlement${forWho(e)}`
+    case 'settlement.submitted': return `Sent deposit settlement${forWho(e)} for approval`
+    case 'settlement.approved': return `Approved and shared deposit settlement${forWho(e)}${d.refund !== undefined ? ` (refund ${money(d.refund)})` : ''}`
+    case 'settlement.returned': return `Sent deposit settlement${forWho(e)} back to draft`
+    case 'settlement.accepted': return `Tenant accepted the deposit settlement${forWho(e)}`
+    case 'settlement.disputed': return `Tenant disputed the deposit settlement${forWho(e)}`
+    case 'settlement.closed': return `Recorded deposit refund${d.refund !== undefined ? ` of ${money(d.refund)}` : ''}${forWho(e)} and closed the settlement`
+    case 'settlement.cancelled': return `Cancelled deposit settlement${forWho(e)}`
+    case 'tenant.invited_to_app': return `Invited${e.target?.label ? ` ${e.target.label}` : ' a tenant'} to the tenant app`
     default: return e.action
   }
 }
 
 export function eventCategory(action) {
-  if (/^(payment|dues|bill)\./.test(action)) return 'money'
-  if (/^(tenant|complaint)\./.test(action)) return 'tenants'
-  if (/^org\.(suspended|reactivated|force_logout|trial_extended)/.test(action)) return 'pgbook'
+  if (/^(payment|dues|bill|claim|settlement|expense|cash)\./.test(action)) return 'money'
+  if (/^(tenant|complaint|moveout|notice)\./.test(action)) return 'tenants'
+  if (/^org\.(suspended|reactivated|force_logout|trial_extended|plan_set)/.test(action) || /^(billing|system)\./.test(action)) return 'pgbook'
   if (/^(admin|approval|audit)\./.test(action)) return 'admin'
   return 'security'
 }

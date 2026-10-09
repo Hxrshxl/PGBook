@@ -13,7 +13,9 @@
     "seed": "node --env-file=.env.local src/lib/seed.mjs",
     "admin": "node --env-file=.env.local scripts/admin.mjs",
     "test:admin": "node scripts/admin-smoke-test.mjs",
-    "test:team": "node scripts/team-smoke-test.mjs"
+    "test:team": "node scripts/team-smoke-test.mjs",
+    "test:billing": "node scripts/billing-smoke-test.mjs",
+    "test:resident": "node scripts/resident-smoke-test.mjs"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

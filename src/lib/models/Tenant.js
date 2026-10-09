@@ -1,5 +1,5 @@
 import mongoose from 'mongoose'
-import { isValidDate, isValidPhone } from '../../utils/helpers.js'
+import { isValidDate, isValidPhone, toWhatsAppNumber } from '../../utils/helpers.js'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 export const ID_TYPES = ['aadhaar', 'passport', 'dl', 'voter', 'pan', 'other', '']
@@ -45,10 +45,28 @@ const tenantSchema = new mongoose.Schema({
   notes:            { type: String, default: '', trim: true, maxlength: [1000, 'Notes are too long.'] },
   // Charged every month on top of rent, e.g. food or laundry
   recurringCharges: { type: [chargeSchema], default: [], validate: { validator: v => v.length <= 10, message: 'At most 10 recurring charges.' } },
+
+  // Tenant app: the phone number (normalized) is the login; residentId links the person once they sign in.
+  phoneKey:         { type: String, default: '' },
+  residentId:       { type: mongoose.Schema.Types.ObjectId, ref: 'Resident', default: null },
+  portalInvitedAt:  { type: Date, default: null },
+  // Notice given (from the app or recorded by the owner)
+  noticeGivenAt:    { type: Date, default: null },
+  expectedMoveOut:  { type: String, default: null, validate: optionalDate },
 }, { timestamps: true })
+
+// The login phone follows the phone number. If the owner changes the number,
+// the old app login stops seeing this stay.
+tenantSchema.pre('validate', function () {
+  const key = toWhatsAppNumber(this.phone)
+  if (!this.isNew && this.isModified('phone') && key !== this.phoneKey) this.residentId = null
+  this.phoneKey = key
+})
 
 tenantSchema.index({ userId: 1, status: 1 })
 tenantSchema.index({ roomId: 1, status: 1 })
+tenantSchema.index({ phoneKey: 1 })
+tenantSchema.index({ residentId: 1 })
 
 tenantSchema.set('toJSON', {
   transform: (_, ret) => {

@@ -16,6 +16,17 @@ const complaintSchema = new mongoose.Schema({
   priority:    { type: String, enum: { values: COMPLAINT_PRIORITIES, message: 'Unknown priority.' }, default: 'medium' },
   ownerNotes:  { type: String, default: '', trim: true, maxlength: [1000, 'Notes are too long.'] },
   resolvedAt:  { type: Date, default: null },
+
+  // Raised by the tenant in the app
+  source:      { type: String, enum: ['owner', 'resident'], default: 'owner' },
+  residentId:  { type: mongoose.Schema.Types.ObjectId, ref: 'Resident', default: null },
+  photoIds:    { type: [mongoose.Schema.Types.ObjectId], default: [], validate: { validator: v => v.length <= 3, message: 'At most 3 photos.' } },
+  okToEnter:   { type: Boolean, default: false },
+  // The tenant confirms the fix (or it closes itself 72 h after being resolved), or reopens it
+  closedAt:    { type: Date, default: null },
+  closedBy:    { type: String, enum: ['resident', 'auto', null], default: null },
+  reopenCount: { type: Number, default: 0 },
+  withdrawnAt: { type: Date, default: null },
 }, { timestamps: true })
 
 complaintSchema.set('toJSON', {
@@ -23,6 +34,8 @@ complaintSchema.set('toJSON', {
     ret.id = ret._id.toString()
     ret.tenantId = ret.tenantId?.toString()
     ret.propertyId = ret.propertyId?.toString() ?? null
+    ret.residentId = ret.residentId?.toString() ?? null
+    ret.photoIds = (ret.photoIds ?? []).map(String)
     delete ret._id
     delete ret.__v
     delete ret.userId

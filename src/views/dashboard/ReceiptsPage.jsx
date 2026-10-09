@@ -9,27 +9,11 @@ import EmptyState from '@/components/ui/EmptyState'
 import Badge from '@/components/ui/Badge'
 import Modal from '@/components/ui/Modal'
 import ReceiptTemplate from '@/components/receipts/ReceiptTemplate'
+import { printHtml } from '@/utils/print'
 
 // Unique per dues record: month + the end of the record's id.
 function buildReceiptNumber(payment) {
   return `RCPT-${payment.month.replace('-', '')}-${payment.id.slice(-6).toUpperCase()}`
-}
-
-// Prints the given HTML through a hidden iframe, so popup blockers never interfere.
-function printHtml(html, title) {
-  const frame = document.createElement('iframe')
-  frame.setAttribute('aria-hidden', 'true')
-  frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;'
-  document.body.appendChild(frame)
-  const doc = frame.contentWindow.document
-  doc.open()
-  doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>body{margin:0;padding:20px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}</style></head><body>${html}</body></html>`)
-  doc.close()
-  frame.contentWindow.focus()
-  setTimeout(() => {
-    frame.contentWindow.print()
-    setTimeout(() => frame.remove(), 1000)
-  }, 250)
 }
 
 export default function ReceiptsPage() {

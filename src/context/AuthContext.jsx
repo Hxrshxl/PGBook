@@ -1,6 +1,7 @@
 'use client'
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { api, UNAUTHORIZED_EVENT } from '@/utils/api'
+import { READ_ONLY_ALLOWED } from '@/lib/subscription'
 
 const AuthContext = createContext(null)
 
@@ -30,8 +31,8 @@ export function AuthProvider({ children }) {
     // Clean up the token the old version of the app kept in localStorage.
     try { localStorage.removeItem('pgbook_auth') } catch {}
 
-    // The admin console has its own, separate session.
-    if (window.location.pathname.startsWith('/admin')) {
+    // The admin console and the resident app have their own, separate sessions.
+    if (window.location.pathname.startsWith('/admin') || window.location.pathname === '/t' || window.location.pathname.startsWith('/t/')) {
       setStatus('unauthenticated')
       return
     }
@@ -77,7 +78,13 @@ export function AuthProvider({ children }) {
     await api.put('/auth/password', { currentPassword, newPassword })
   }
 
-  const can = useCallback(capability => !!access?.permissions?.includes(capability), [access])
+  // In read-only mode (lapsed subscription) only viewing, billing and export stay available,
+  // so every "Add" / "Edit" button disappears without each page having to check.
+  const can = useCallback(capability => {
+    if (!access?.permissions?.includes(capability)) return false
+    if (!access.billing?.readOnly) return true
+    return capability.endsWith('.view') || READ_ONLY_ALLOWED.includes(capability)
+  }, [access])
 
   return (
     <AuthContext.Provider value={{ user, access, status, can, login, signup, logout, loadMe, updateProfile, changePassword }}>

@@ -5,6 +5,7 @@ import { ensureDue } from '@/lib/billing'
 import { resolveRoom } from '@/lib/rooms'
 import { tenantTarget } from '@/lib/auditTargets'
 import { can } from '@/lib/policy'
+import { assertWithinLimit } from '@/lib/planLimits'
 import { getCurrentMonth, isBillableMonth } from '@/utils/helpers'
 
 export const GET = route(async ({ scope, actor }) => {
@@ -16,6 +17,7 @@ export const GET = route(async ({ scope, actor }) => {
 // Creates the tenant in a room with a free bed and, if they already live there, this month's dues.
 export const POST = route(async ({ request, org, scope, actor, audit }) => {
   const body = await readJson(request)
+  await assertWithinLimit(org, 'tenants')
   const property = await scope.defaultProperty(body.propertyId)
   const room = await resolveRoom({ orgId: org._id, property, roomId: body.roomId, roomName: body.room, rent: Number(body.rentAmount) || 0 })
 

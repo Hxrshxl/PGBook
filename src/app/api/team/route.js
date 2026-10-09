@@ -3,6 +3,7 @@ import User from '@/lib/models/User'
 import { route, readJson, json, ApiError } from '@/lib/api'
 import { issueStaffInvite, memberTarget, validateAccess } from '@/lib/team'
 import { ORG_ROLES, ORG_ROLE_DESCRIPTIONS } from '@/lib/policy'
+import { assertWithinLimit } from '@/lib/planLimits'
 
 export const GET = route(async ({ org }) => {
   const members = await Membership.find({ orgId: org._id, status: { $ne: 'removed' } }).sort({ createdAt: 1 })
@@ -29,6 +30,7 @@ export const POST = route(async ({ request, org, audit }) => {
   if (!name) throw new ApiError(400, 'Name is required.')
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ApiError(400, 'Please enter a valid email address.')
   const access = await validateAccess(org._id, body)
+  await assertWithinLimit(org, 'staff')
 
   if (email === org.email) throw new ApiError(400, "That's your own email.")
   const existingUser = await User.findOne({ email }).select('kind')

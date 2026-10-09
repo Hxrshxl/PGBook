@@ -4,9 +4,12 @@ import Link from 'next/link'
 import { Check, Zap } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { fadeUp, fadeIn, staggerContainer, scaleIn } from '@/utils/animations'
+import { PLANS } from '@/lib/plans'
 
 const ownerFeatures = [
-  'Tenant roster (unlimited tenants)',
+  'Up to 50 tenants · 3 staff logins',
+  'Rooms & beds, late fees, food charges',
+  'Tenant app: phone login, UPI pay, complaints',
   'Monthly rent tracker',
   'Utility bill splitter',
   'PDF rent receipt generator',
@@ -20,6 +23,7 @@ const ownerFeatures = [
 
 const starterFeatures = [
   'Up to 10 tenants',
+  'Tenant app for your residents',
   'Rent tracker',
   'Utility splitter',
   'Receipt generator',
@@ -29,8 +33,9 @@ const starterFeatures = [
 export default function Pricing() {
   const [annual, setAnnual] = useState(false)
 
-  const proPrice = annual ? 399 : 499
-  const savings = annual ? Math.round((499 * 12 - 399 * 12) / 100) * 100 : 0
+  const price = id => (annual ? PLANS[id].yearlyMonthlyPrice : PLANS[id].monthlyPrice)
+  const proPrice = price('pro')
+  const savings = annual ? (PLANS.pro.monthlyPrice - PLANS.pro.yearlyMonthlyPrice) * 12 : 0
 
   return (
     <section id="pricing" className="py-24 bg-slate-50 section-border">
@@ -86,7 +91,7 @@ export default function Pricing() {
             <p className="text-slate-500 text-sm font-semibold uppercase tracking-wider mb-2">Starter</p>
             <div className="flex items-baseline gap-1 mb-1">
               <span className="text-3xl font-bold text-slate-900" style={{ fontFamily: 'Space Grotesk' }}>
-                ₹{annual ? 199 : 249}
+                ₹{price('starter')}
               </span>
               <span className="text-slate-400 text-sm">/month</span>
             </div>
@@ -144,7 +149,7 @@ export default function Pricing() {
             <p className="text-slate-500 text-sm font-semibold uppercase tracking-wider mb-2">Multi-PG</p>
             <div className="flex items-baseline gap-1 mb-1">
               <span className="text-3xl font-bold text-slate-900" style={{ fontFamily: 'Space Grotesk' }}>
-                ₹{annual ? 799 : 999}
+                ₹{price('multi')}
               </span>
               <span className="text-slate-400 text-sm">/month</span>
             </div>
@@ -153,10 +158,10 @@ export default function Pricing() {
               href="/signup"
               className="block text-center border border-slate-200 hover:border-indigo-400 text-slate-700 hover:text-indigo-600 font-semibold text-sm py-2.5 rounded-xl mb-6 transition-colors"
             >
-              Contact us
+              Start free trial
             </Link>
             <ul className="space-y-2.5">
-              {['Everything in Pro', 'Up to 5 PG properties', 'Unlimited tenants', 'Consolidated reports', 'Dedicated support', 'Custom branding on receipts'].map((f) => (
+              {['Everything in Pro', 'Up to 5 PG properties', 'Unlimited tenants', 'Up to 10 staff logins', 'Consolidated reports', 'Custom branding on receipts'].map((f) => (
                 <li key={f} className="flex items-start gap-2.5">
                   <Check size={15} className="text-emerald-500 mt-0.5 shrink-0" />
                   <span className="text-slate-600 text-sm">{f}</span>
@@ -167,7 +172,7 @@ export default function Pricing() {
         </motion.div>
 
         <p className="text-center text-slate-400 text-sm mt-8">
-          14-day free trial · No credit card required · Cancel anytime
+          14-day free trial · No credit card required · Cancel anytime · Prices include GST{annual ? ' · Billed yearly' : ''}
         </p>
       </div>
     </section>

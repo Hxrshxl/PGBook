@@ -24,7 +24,8 @@ export default function DashboardHome() {
   const { user, can } = useAuth()
   const { tenants, payments, complaints, expenses, rooms, approvals, properties, currentProperty, pgSettings } = useAppData()
   const actions = quickActions.filter(a => can(a.capability) && !(a.unless && can(a.unless))).slice(0, 4)
-  const waiting = (approvals?.counts?.requests ?? 0) + (approvals?.counts?.cash ?? 0)
+  const counts = approvals?.counts ?? {}
+  const waiting = (counts.requests ?? 0) + (counts.cash ?? 0) + (counts.claims ?? 0) + (counts.moveOuts ?? 0) + (counts.settlements ?? 0)
   const placeName = currentProperty?.name ?? (properties.length > 1 ? `your ${properties.length} properties` : pgSettings.pgName || 'your PG')
 
   const hour = new Date().getHours()

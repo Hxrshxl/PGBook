@@ -5,6 +5,7 @@ import User from './models/User.js'
 import { ApiError } from './api'
 import { recordAudit } from './audit'
 import { ADMIN_ROLES, maxTrialExtension } from './policy'
+import { PAID_PLAN_IDS, PLANS } from './plans'
 
 export async function findOrg(id) {
   if (!mongoose.isValidObjectId(id)) throw new ApiError(404, 'Owner account not found.')
@@ -55,6 +56,37 @@ export async function extendTrial(user, { days, reason, actor, request }) {
   await recordAudit({
     actor, action: 'org.trial_extended', orgId: user._id, target: orgTarget(user), reason: why, request,
     details: { days: n, from: previous.toISOString(), to: user.trialEndsAt.toISOString() },
+  }, { critical: true })
+  await user.save()
+  return user
+}
+
+/**
+ * Puts an owner on a paid plan without online payment (offline payment, partner deal, goodwill).
+ * With an end date the plan lapses then (read-only), like a cancelled subscription.
+ */
+export async function setOrgPlan(user, { plan, until, reason, actor, request }) {
+  const why = requireReason(reason)
+  if (!PAID_PLAN_IDS.includes(plan)) throw new ApiError(400, 'Choose a paid plan. Use "Extend trial" for trials.')
+  if (user.billing?.provider && user.billing.provider !== 'manual' && ['active', 'past_due'].includes(user.billing.status)) {
+    throw new ApiError(409, 'This owner has an online subscription. They need to cancel it first (or wait for it to end).')
+  }
+  let end = null
+  if (until) {
+    end = new Date(until)
+    if (Number.isNaN(end.getTime()) || end <= new Date()) throw new ApiError(400, 'The end date must be in the future.')
+  }
+  const previous = { plan: user.plan, until: user.billing?.currentPeriodEnd ?? null }
+  user.plan = plan
+  user.billing = {
+    ...(user.billing?.toObject?.() ?? {}),
+    status: 'active', provider: 'manual', interval: 'monthly', subscriptionId: undefined, pending: null,
+    currentPeriodStart: new Date(), currentPeriodEnd: end ?? undefined, cancelAtPeriodEnd: !!end,
+    pastDueSince: undefined, haltedAt: undefined, cancelledAt: undefined,
+  }
+  await recordAudit({
+    actor, action: 'org.plan_set', orgId: user._id, target: orgTarget(user), reason: why, request,
+    details: { planFrom: previous.plan, planTo: plan, until: end ? end.toISOString() : 'no end date', label: PLANS[plan].label },
   }, { critical: true })
   await user.save()
   return user

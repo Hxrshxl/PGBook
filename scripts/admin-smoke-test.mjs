@@ -155,6 +155,8 @@ try {
   check('analyst sees aggregates without account lists', r.status === 200 && r.data.attention.trialsEnding.length === 0 && r.data.activity.length === 0)
   r = await ana('GET', '/admin/owners')
   check('analyst cannot list owners', r.status === 403)
+  r = await ana('GET', '/admin/revenue')
+  check('analyst sees revenue totals but no owner names', r.status === 200 && typeof r.data.mrr === 'number' && r.data.attention === null && r.data.invoices.every(i => i.owner === undefined))
 
   console.log('\nAccount actions & approvals')
   r = await sa1('POST', `/admin/owners/${ownerId}/actions`, { action: 'extendTrial', days: 10 })
@@ -274,6 +276,14 @@ try {
   await PlatformAdmin.updateOne({ email: emails.sup }, { $set: { lastActivityAt: new Date(Date.now() - 31 * 60000) } })
   r = await sup('GET', '/admin/auth/me')
   check('30 minutes idle ends the admin session', r.status === 401)
+
+  console.log('\nPlans')
+  r = await sa1('POST', `/admin/owners/${ownerId}/actions`, { action: 'setPlan', plan: 'pro', reason: 'Paid by bank transfer', until: new Date(Date.now() + 30 * 86400000).toISOString() })
+  check('super admin sets a plan manually (with an end date)', r.status === 200 && r.data.owner.plan === 'pro', r.data)
+  r = await sa1('GET', `/admin/owners/${ownerId}`)
+  check('owner detail shows the subscription', r.data.billing.provider === 'manual' && r.data.billing.status === 'cancelling' && r.data.billing.limits.tenants === 50)
+  r = await sa1('GET', '/admin/revenue')
+  check('revenue page loads; manual plans are not counted as MRR', r.status === 200 && r.data.mrr === 0 && Array.isArray(r.data.attention.cancelling))
 
   const cookieBefore = sa1.jar.get('pgbook_admin')
   await sa1('POST', '/admin/auth/logout')
