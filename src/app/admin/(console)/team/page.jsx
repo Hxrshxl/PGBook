@@ -10,7 +10,7 @@ import Pill from '@/components/admin/Pill'
 import ReasonDialog from '@/components/ui/ReasonDialog'
 import { relative } from '@/components/admin/format'
 
-const inputCls = 'w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-indigo-500'
+const inputCls = 'w-full border border-slate-200 rounded-md px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 bg-white'
 
 export default function TeamPage() {
   const { admin: me } = useAdmin()
@@ -48,31 +48,31 @@ export default function TeamPage() {
   const pendingFor = id => data.pending.filter(p => p.payload?.adminId === id)
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-6">
+    <div className="px-4 py-6 sm:px-6 lg:px-8 lg:py-8 max-w-6xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Admin Team</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-slate-900">Admin team</h1>
           <p className="text-slate-500 text-sm mt-1">Every change here — invites, roles, disabling, 2FA resets — needs approval from a second Super Admin.</p>
         </div>
         {data.canRequest && (
-          <button onClick={() => setDialog({ type: 'invite' })} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm px-4 py-2.5 rounded-xl shrink-0">
+          <button onClick={() => setDialog({ type: 'invite' })} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md bg-indigo-600 font-medium text-white shadow-xs transition-colors hover:bg-indigo-700 disabled:opacity-50 shrink-0">
             <UserPlus size={16} /> Invite admin
           </button>
         )}
       </div>
 
       {data.pending.length > 0 && (
-        <div className="bg-amber-50 border border-amber-100 rounded-2xl px-5 py-4 text-sm text-amber-900">
+        <div className="bg-amber-50 border border-amber-100 rounded-xl px-5 py-4 text-sm text-amber-900">
           <p className="font-semibold mb-1">Waiting for approval</p>
           <ul className="list-disc ml-5 space-y-0.5">{data.pending.map(p => <li key={p.id}>{p.summary} — requested by {p.requestedBy.name}</li>)}</ul>
         </div>
       )}
 
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[820px]">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-left text-xs uppercase tracking-wider text-slate-500">
+              <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
                 <th scope="col" className="px-4 py-3 font-medium">Admin</th>
                 <th scope="col" className="px-4 py-3 font-medium">Role</th>
                 <th scope="col" className="px-4 py-3 font-medium">Status</th>
@@ -118,7 +118,7 @@ export default function TeamPage() {
         </div>
       </div>
 
-      <section className="bg-white rounded-2xl border border-slate-200 p-5">
+      <section className="bg-white rounded-xl border border-slate-200 p-5">
         <h2 className="font-semibold text-slate-900 text-sm mb-3">Roles</h2>
         <dl className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
           {data.roles.map(r => (
@@ -194,7 +194,7 @@ export default function TeamPage() {
         <p className="text-sm text-slate-600 mb-3">Single-use, valid for 72 hours. Any earlier link for this person no longer works.</p>
         <div className="flex gap-2">
           <input readOnly value={link ?? ''} aria-label="Invite link" onFocus={e => e.target.select()} className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 bg-slate-50" />
-          <button onClick={async () => { await navigator.clipboard.writeText(link); setCopied(true) }} className="flex items-center gap-1.5 text-sm font-medium px-3 rounded-xl bg-indigo-600 text-white hover:bg-indigo-500">
+          <button onClick={async () => { await navigator.clipboard.writeText(link); setCopied(true) }} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md bg-indigo-600 font-medium text-white shadow-xs transition-colors hover:bg-indigo-700 disabled:opacity-50">
             {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? 'Copied' : 'Copy'}
           </button>
         </div>

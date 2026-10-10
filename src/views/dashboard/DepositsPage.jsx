@@ -1,6 +1,6 @@
 'use client'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { PiggyBank, Plus, X, DoorOpen, Pencil } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 import { api } from '@/utils/api'
 import { useAppData } from '@/context/AppContext'
 import { useAuth } from '@/context/AuthContext'
@@ -11,19 +11,23 @@ import Modal from '@/components/ui/Modal'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import FormError from '@/components/ui/FormError'
 import Spinner from '@/components/ui/Spinner'
+import Badge from '@/components/ui/Badge'
+import PageHeader from '@/components/ui/PageHeader'
+import StatStrip from '@/components/ui/StatStrip'
+import Panel from '@/components/ui/Panel'
+import { button, page } from '@/components/ui/styles'
 
-const inputCls = 'w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors'
-const labelCls = 'block text-slate-700 text-sm font-medium mb-1.5'
-const btn = 'text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors'
+const inputCls = 'w-full border border-slate-200 rounded-md px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 transition-colors bg-white'
+const labelCls = 'block text-[13px] font-medium text-slate-700 mb-1.5'
 const PRESETS = ['Room cleaning', 'Damage repair', 'Key / access card not returned', 'Short notice (days)', 'Painting']
 
 const STATUS = {
-  draft: ['Draft', 'bg-slate-100 text-slate-600'],
-  pending_approval: ['Waiting for owner', 'bg-amber-50 text-amber-700'],
-  shared: ['Shared with tenant', 'bg-indigo-50 text-indigo-700'],
-  accepted: ['Accepted by tenant', 'bg-emerald-50 text-emerald-700'],
-  disputed: ['Disputed', 'bg-red-50 text-red-700'],
-  closed: ['Closed', 'bg-slate-100 text-slate-500'],
+  draft: ['Draft', 'gray'],
+  pending_approval: ['Waiting for owner', 'amber'],
+  shared: ['Shared with tenant', 'blue'],
+  accepted: ['Accepted by tenant', 'green'],
+  disputed: ['Disputed', 'red'],
+  closed: ['Closed', 'gray'],
 }
 
 const sum = list => roundMoney((list ?? []).reduce((s, d) => s + (Number(d.amount) || 0), 0))
@@ -81,8 +85,8 @@ function SettlementEditor({ settlement, onSave, onCancel }) {
       <p className="text-xs text-slate-400">Unpaid dues are taken from the ledger automatically. A shared settlement goes back to draft when edited and must be shared again.</p>
       <FormError message={error} />
       <div className="flex justify-end gap-3">
-        <button type="button" onClick={onCancel} disabled={busy} className="px-5 py-2.5 text-sm font-medium text-slate-600 border border-slate-200 rounded-xl disabled:opacity-50">Cancel</button>
-        <button type="submit" disabled={busy} className="px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl disabled:opacity-60">{busy ? 'Saving…' : 'Save'}</button>
+        <button type="button" onClick={onCancel} disabled={busy} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md border border-slate-200 bg-white font-medium text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50">Cancel</button>
+        <button type="submit" disabled={busy} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md bg-indigo-600 font-medium text-white shadow-xs transition-colors hover:bg-indigo-700 disabled:opacity-50">{busy ? 'Saving…' : 'Save'}</button>
       </div>
     </form>
   )
@@ -117,7 +121,7 @@ function RefundForm({ settlement, onSubmit, onCancel }) {
       </div>
       <FormError message={error} />
       <div className="flex justify-end gap-3">
-        <button type="button" onClick={onCancel} disabled={busy} className="px-5 py-2.5 text-sm font-medium text-slate-600 border border-slate-200 rounded-xl disabled:opacity-50">Cancel</button>
+        <button type="button" onClick={onCancel} disabled={busy} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md border border-slate-200 bg-white font-medium text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50">Cancel</button>
         <button type="submit" disabled={busy} className="px-5 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl disabled:opacity-60">{busy ? 'Closing…' : 'Record refund & close'}</button>
       </div>
     </form>
@@ -157,74 +161,83 @@ export default function DepositsPage() {
     cancel: ['Cancel this settlement?', 'You can start a new one later.', 'Cancel settlement'],
   }
 
+  const onNotice = data.onNotice.filter(inScope)
+  const awaiting = data.awaitingSettlement.filter(inScope)
+  const leaving = [
+    ...onNotice.map(t => ({ ...t, when: `Moving out ${t.expectedMoveOut ? formatDate(t.expectedMoveOut) : 'soon'}` })),
+    ...awaiting.map(t => ({ ...t, when: `Moved out ${formatDate(t.moveOutDate)}` })),
+  ]
+  const sm = { neutral: button('secondary', 'sm'), primary: button('primary', 'sm'), ghost: button('ghost', 'sm') }
+
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Deposits</h1>
-        <p className="text-slate-500 text-sm mt-1">Deposits held, tenants on notice, and move-out settlements</p>
-      </div>
+    <div className={`${page} mx-auto max-w-5xl space-y-6`}>
+      <PageHeader title="Deposits" description="Deposits held, tenants on notice, and move-out settlements." />
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5"><p className="text-xs font-medium text-slate-500 uppercase">Deposits held</p><p className="text-2xl font-bold text-slate-900 mt-1">{formatCurrency(data.held)}</p><p className="text-xs text-slate-400">{data.tenantsWithDeposit} current tenants</p></div>
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5"><p className="text-xs font-medium text-slate-500 uppercase">On notice</p><p className="text-2xl font-bold text-slate-900 mt-1">{data.onNotice.filter(inScope).length}</p><p className="text-xs text-slate-400">moving out soon</p></div>
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5"><p className="text-xs font-medium text-slate-500 uppercase">Settlements open</p><p className="text-2xl font-bold text-slate-900 mt-1">{settlements.filter(s => s.status !== 'closed').length}</p><p className="text-xs text-slate-400">{data.awaitingSettlement.filter(inScope).length} moved out without one</p></div>
-      </div>
+      <StatStrip items={[
+        { label: 'Deposits held', value: formatCurrency(data.held), sub: `${data.tenantsWithDeposit} current tenants` },
+        { label: 'On notice', value: onNotice.length, sub: 'Moving out soon' },
+        { label: 'Open settlements', value: settlements.filter(x => x.status !== 'closed').length, sub: `${awaiting.length} moved out without one`, tone: awaiting.length ? 'warning' : 'default' },
+      ]} />
 
-      {(data.onNotice.filter(inScope).length > 0 || data.awaitingSettlement.filter(inScope).length > 0) && (
-        <section className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <h2 className="text-sm font-semibold text-slate-900 px-5 py-3.5 border-b border-slate-100 bg-slate-50 flex items-center gap-2"><DoorOpen size={15} className="text-slate-500" /> Leaving or left</h2>
+      {leaving.length > 0 && (
+        <Panel title="Leaving or left" count={leaving.length}>
           <ul className="divide-y divide-slate-100">
-            {[...data.onNotice.filter(inScope).map(t => ({ ...t, when: `moving out ${t.expectedMoveOut ? formatDate(t.expectedMoveOut) : 'soon'}` })),
-              ...data.awaitingSettlement.filter(inScope).map(t => ({ ...t, when: `moved out ${formatDate(t.moveOutDate)}` }))].map(t => (
-              <li key={t.id} className="px-5 py-3 flex items-center gap-3">
-                <div className="flex-1 min-w-0"><p className="text-sm font-medium text-slate-900">{t.name} <span className="font-normal text-slate-500">· Room {t.room}</span></p><p className="text-xs text-slate-400">{t.when} · deposit {formatCurrency(t.deposit)}</p></div>
-                {t.hasSettlement ? <span className="text-xs text-slate-400">Settlement in progress</span> : canManage && (
-                  <button onClick={() => start.run(t.id)} disabled={start.busy} className={`${btn} text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60`}>Start settlement</button>
+            {leaving.map(t => (
+              <li key={t.id} className="flex items-center gap-3 px-5 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-slate-900">{t.name} <span className="font-normal text-slate-500">· Room {t.room}</span></p>
+                  <p className="text-xs text-slate-500">{t.when} · deposit {formatCurrency(t.deposit)}</p>
+                </div>
+                {t.hasSettlement ? <span className="text-xs text-slate-500">Settlement in progress</span> : canManage && (
+                  <button onClick={() => start.run(t.id)} disabled={start.busy} className={sm.neutral}>Start settlement</button>
                 )}
               </li>
             ))}
           </ul>
-        </section>
+        </Panel>
       )}
 
-      <section className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50 flex flex-col sm:flex-row sm:items-center gap-3">
-          <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2 flex-1"><PiggyBank size={15} className="text-slate-500" /> Settlements</h2>
-          {canManage && startable.length > 0 && (
-            <div className="flex gap-2">
-              <select aria-label="Tenant" value={startFor} onChange={e => setStartFor(e.target.value)} className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs">
-                <option value="">Settle another tenant…</option>
-                {startable.map(t => <option key={t.id} value={t.id}>{t.name} · {t.room}</option>)}
-              </select>
-              <button onClick={() => startFor && start.run(startFor)} disabled={!startFor || start.busy} className={`${btn} text-white bg-indigo-600 disabled:opacity-40`}>Start</button>
-            </div>
-          )}
-        </div>
-        <FormError message={start.error} />
+      <Panel
+        title="Settlements"
+        count={settlements.length}
+        actions={canManage && startable.length > 0 && (
+          <div className="flex gap-2">
+            <select aria-label="Tenant" value={startFor} onChange={e => setStartFor(e.target.value)} className="h-8 max-w-[200px] rounded-md border border-slate-200 bg-white px-2 text-[13px] text-slate-700 focus:border-indigo-500 focus:outline-none">
+              <option value="">Settle another tenant…</option>
+              {startable.map(t => <option key={t.id} value={t.id}>{t.name} · {t.room}</option>)}
+            </select>
+            <button onClick={() => startFor && start.run(startFor)} disabled={!startFor || start.busy} className={sm.neutral}>Start</button>
+          </div>
+        )}
+      >
+        {start.error && <div className="px-5 pt-3"><FormError message={start.error} /></div>}
         {settlements.length === 0 ? (
-          <p className="px-5 py-10 text-center text-sm text-slate-400">No settlements yet. Start one when a tenant gives notice or moves out.</p>
+          <p className="px-5 py-10 text-center text-sm text-slate-500">No settlements yet. Start one when a tenant gives notice or moves out.</p>
         ) : (
           <ul className="divide-y divide-slate-100">
             {settlements.map(s => {
-              const [label, cls] = STATUS[s.status] ?? STATUS.draft
+              const [label, tone] = STATUS[s.status] ?? STATUS.draft
               const editable = canManage && ['draft', 'pending_approval', 'shared', 'disputed'].includes(s.status)
               return (
                 <li key={s.id} className="px-5 py-4">
-                  <div className="flex flex-col sm:flex-row sm:items-start gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-900">{s.tenantName} <span className="font-normal text-slate-500">· Room {s.room} · {formatDate(s.moveOutDate)}</span> <span className={`ml-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${cls}`}>{label}</span></p>
-                      <p className="text-xs text-slate-500 mt-1">
-                        Deposit {formatCurrency(s.deposit)} − dues {formatCurrency(sum(s.unpaidDues))} − deductions {formatCurrency(sum(s.deductions))} = <strong className="text-slate-900">{s.refundAmount >= 0 ? `refund ${formatCurrency(s.refundAmount)}` : `tenant owes ${formatCurrency(-s.refundAmount)}`}</strong>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-medium text-slate-900">{s.tenantName} <span className="font-normal text-slate-500">· Room {s.room} · {formatDate(s.moveOutDate)}</span></p>
+                        <Badge tone={tone}>{label}</Badge>
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Deposit {formatCurrency(s.deposit)} − dues {formatCurrency(sum(s.unpaidDues))} − deductions {formatCurrency(sum(s.deductions))} = <strong className="font-medium text-slate-900">{s.refundAmount >= 0 ? `refund ${formatCurrency(s.refundAmount)}` : `tenant owes ${formatCurrency(-s.refundAmount)}`}</strong>
                       </p>
-                      {s.tenantResponse?.comment && <p className="text-xs text-red-700 mt-1">Tenant: “{s.tenantResponse.comment}”</p>}
-                      {s.refund && <p className="text-xs text-slate-500 mt-1">Refunded {formatCurrency(s.refund.amount)} by {s.refund.method}{s.refund.reference ? ` (${s.refund.reference})` : ''} on {formatDate(s.refund.date)}</p>}
+                      {s.tenantResponse?.comment && <p className="mt-1 border-l-2 border-red-300 pl-2 text-xs text-slate-700">Tenant: “{s.tenantResponse.comment}”</p>}
+                      {s.refund && <p className="mt-1 text-xs text-slate-500">Refunded {formatCurrency(s.refund.amount)} by {s.refund.method}{s.refund.reference ? ` (${s.refund.reference})` : ''} on {formatDate(s.refund.date)}</p>}
                     </div>
-                    <div className="flex flex-wrap gap-2 shrink-0">
-                      {editable && <button onClick={() => setEditing(s)} className={`${btn} text-slate-600 border border-slate-200 hover:border-slate-300 flex items-center gap-1`}><Pencil size={12} /> Edit</button>}
-                      {s.status === 'draft' && canManage && !canApprove && <button onClick={() => setConfirm({ settlement: s, action: 'submit' })} className={`${btn} text-white bg-indigo-600 hover:bg-indigo-500`}>Send for approval</button>}
-                      {['draft', 'pending_approval'].includes(s.status) && canApprove && <button onClick={() => setConfirm({ settlement: s, action: 'approve' })} className={`${btn} text-white bg-indigo-600 hover:bg-indigo-500`}>Approve & share</button>}
-                      {['shared', 'accepted', 'disputed'].includes(s.status) && canApprove && <button onClick={() => setRefunding(s)} className={`${btn} text-white bg-emerald-600 hover:bg-emerald-500`}>Record refund & close</button>}
-                      {['draft', 'pending_approval'].includes(s.status) && canManage && <button onClick={() => setConfirm({ settlement: s, action: 'cancel' })} className={`${btn} text-slate-500 hover:text-red-600`}>Cancel</button>}
+                    <div className="flex shrink-0 flex-wrap gap-1.5">
+                      {['draft', 'pending_approval'].includes(s.status) && canManage && <button onClick={() => setConfirm({ settlement: s, action: 'cancel' })} className={sm.ghost}>Cancel</button>}
+                      {editable && <button onClick={() => setEditing(s)} className={sm.neutral}>Edit</button>}
+                      {s.status === 'draft' && canManage && !canApprove && <button onClick={() => setConfirm({ settlement: s, action: 'submit' })} className={sm.primary}>Send for approval</button>}
+                      {['draft', 'pending_approval'].includes(s.status) && canApprove && <button onClick={() => setConfirm({ settlement: s, action: 'approve' })} className={sm.primary}>Approve & share</button>}
+                      {['shared', 'accepted', 'disputed'].includes(s.status) && canApprove && <button onClick={() => setRefunding(s)} className={sm.primary}>Record refund & close</button>}
                     </div>
                   </div>
                 </li>
@@ -232,12 +245,12 @@ export default function DepositsPage() {
             })}
           </ul>
         )}
-      </section>
+      </Panel>
 
-      <Modal isOpen={!!editing} onClose={() => setEditing(null)} title={`Settlement · ${editing?.tenantName ?? ''}`} maxWidth="max-w-xl">
+      <Modal isOpen={!!editing} onClose={() => setEditing(null)} title="Deposit settlement" description={editing?.tenantName} maxWidth="max-w-xl">
         {editing && <SettlementEditor settlement={editing} onCancel={() => setEditing(null)} onSave={async body => { await api.put(`/settlements/${editing.id}`, body); setEditing(null); showToast('Settlement saved.'); load() }} />}
       </Modal>
-      <Modal isOpen={!!refunding} onClose={() => setRefunding(null)} title={`Close settlement · ${refunding?.tenantName ?? ''}`} maxWidth="max-w-lg">
+      <Modal isOpen={!!refunding} onClose={() => setRefunding(null)} title="Close settlement" description={refunding?.tenantName} maxWidth="max-w-lg">
         {refunding && <RefundForm settlement={refunding} onCancel={() => setRefunding(null)} onSubmit={async body => { await api.post(`/settlements/${refunding.id}`, { action: 'refund', ...body }); setRefunding(null); showToast('Settlement closed. Dues settled from the deposit.'); await load(); await reload() }} />}
       </Modal>
       <ConfirmDialog

@@ -1,6 +1,6 @@
 'use client'
 import { useCallback, useEffect, useState } from 'react'
-import { Megaphone, Pin, Plus, Trash2, CheckCheck } from 'lucide-react'
+import { Megaphone, Plus } from 'lucide-react'
 import { api } from '@/utils/api'
 import { useAppData } from '@/context/AppContext'
 import { useAuth } from '@/context/AuthContext'
@@ -12,9 +12,13 @@ import EmptyState from '@/components/ui/EmptyState'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import FormError from '@/components/ui/FormError'
 import Spinner from '@/components/ui/Spinner'
+import Badge from '@/components/ui/Badge'
+import PageHeader from '@/components/ui/PageHeader'
+import RowMenu from '@/components/ui/RowMenu'
+import { btn, page } from '@/components/ui/styles'
 
-const inputCls = 'w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors'
-const labelCls = 'block text-slate-700 text-sm font-medium mb-1.5'
+const inputCls = 'w-full border border-slate-200 rounded-md px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 transition-colors bg-white'
+const labelCls = 'block text-[13px] font-medium text-slate-700 mb-1.5'
 
 function NoticeForm({ properties, defaultPropertyId, onSubmit, onCancel }) {
   const [form, setForm] = useState({ title: '', body: '', propertyIds: defaultPropertyId ? [defaultPropertyId] : [], pinned: false, requiresAck: false })
@@ -55,8 +59,8 @@ function NoticeForm({ properties, defaultPropertyId, onSubmit, onCancel }) {
       </div>
       <FormError message={error} />
       <div className="flex justify-end gap-3">
-        <button type="button" onClick={onCancel} disabled={busy} className="px-5 py-2.5 text-sm font-medium text-slate-600 border border-slate-200 rounded-xl hover:border-slate-300 disabled:opacity-50">Cancel</button>
-        <button type="submit" disabled={busy} className="px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl disabled:opacity-60">{busy ? 'Publishing…' : 'Publish notice'}</button>
+        <button type="button" onClick={onCancel} disabled={busy} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md border border-slate-200 bg-white font-medium text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50">Cancel</button>
+        <button type="submit" disabled={busy} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md bg-indigo-600 font-medium text-white shadow-xs transition-colors hover:bg-indigo-700 disabled:opacity-50">{busy ? 'Publishing…' : 'Publish notice'}</button>
       </div>
     </form>
   )
@@ -96,38 +100,33 @@ export default function NoticesPage() {
   const visible = notices.filter(inScope)
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between gap-3 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Notices</h1>
-          <p className="text-slate-500 text-sm mt-1">Announcements your tenants see in the PGBook tenant app</p>
-        </div>
-        {canManage && (
-          <button onClick={() => setAdding(true)} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm px-4 py-2.5 rounded-xl shrink-0">
-            <Plus size={16} /> <span className="hidden sm:inline">New notice</span>
-          </button>
-        )}
-      </div>
+    <div className={`${page} mx-auto max-w-3xl`}>
+      <PageHeader
+        title="Notices"
+        description="Announcements your tenants see in the PGBook tenant app."
+        actions={canManage && <button onClick={() => setAdding(true)} className={btn.primary}><Plus size={15} /> New notice</button>}
+      />
 
       {visible.length === 0 ? (
         <EmptyState icon={Megaphone} title="No notices" message="Post water cuts, rule changes or the food menu. Tenants using the app see them right away." actionLabel={canManage ? 'New notice' : undefined} onAction={() => setAdding(true)} />
       ) : (
-        <ul className="space-y-3">
+        <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
           {visible.map(n => (
-            <li key={n.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-              <div className="flex items-start gap-3">
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-slate-900 flex items-center gap-2">{n.pinned && <Pin size={14} className="text-indigo-500" />}{n.title}</p>
-                  {n.body && <p className="text-sm text-slate-600 mt-1 whitespace-pre-line">{n.body}</p>}
-                  <p className="text-xs text-slate-400 mt-2">{audience(n)} · {timeAgo(n.createdAt)}{n.createdBy?.name ? ` · by ${n.createdBy.name}` : ''}</p>
-                  {n.requiresAck && (
-                    <p className="text-xs text-slate-600 mt-1 flex items-center gap-1"><CheckCheck size={13} className="text-emerald-600" /> Read by {n.acks.length} of {appUsers(n)} tenants using the app{n.acks.length ? `: ${n.acks.slice(0, 5).map(a => a.name).join(', ')}${n.acks.length > 5 ? '…' : ''}` : ''}</p>
-                  )}
+            <li key={n.id} className="flex items-start gap-3 px-5 py-4">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-medium text-slate-900">{n.title}</p>
+                  {n.pinned && <Badge tone="blue">Pinned</Badge>}
                 </div>
-                {canManage && (
-                  <button onClick={() => setArchiving(n)} aria-label="Take down notice" className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-slate-50"><Trash2 size={15} /></button>
+                <p className="mt-0.5 text-xs text-slate-500">{audience(n)} · {timeAgo(n.createdAt)}{n.createdBy?.name ? ` · by ${n.createdBy.name}` : ''}</p>
+                {n.body && <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-slate-700">{n.body}</p>}
+                {n.requiresAck && (
+                  <p className="mt-2 text-xs text-slate-600">
+                    <span className="font-medium text-slate-900">Read by {n.acks.length} of {appUsers(n)}</span> tenants using the app{n.acks.length ? `: ${n.acks.slice(0, 5).map(a => a.name).join(', ')}${n.acks.length > 5 ? '…' : ''}` : ''}
+                  </p>
                 )}
               </div>
+              {canManage && <RowMenu label={`Actions for ${n.title}`} items={[{ label: 'Take down', onClick: () => setArchiving(n), danger: true }]} />}
             </li>
           ))}
         </ul>

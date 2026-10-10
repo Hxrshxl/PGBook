@@ -25,7 +25,7 @@ export default function RecordPaymentModal({ payment, tenantName, pendingCash = 
     run(cashMode ? { amount: amountNum, date, note } : { amount: amountNum, date, method, note })
   }
 
-  const inputCls = 'w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors'
+  const inputCls = 'w-full border border-slate-200 rounded-md px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 transition-colors bg-white'
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -52,7 +52,7 @@ export default function RecordPaymentModal({ payment, tenantName, pendingCash = 
         )}
         <div className="flex justify-between text-sm border-t border-slate-200 pt-2">
           <span className="text-slate-700 font-medium">{cashMode ? 'Still to collect' : 'Balance remaining'}</span>
-          <span className="text-amber-700 font-bold">{formatCurrency(balance)}</span>
+          <span className="text-amber-700 font-semibold">{formatCurrency(balance)}</span>
         </div>
       </div>
       {cashMode ? (
@@ -64,7 +64,7 @@ export default function RecordPaymentModal({ payment, tenantName, pendingCash = 
       )}
 
       <div>
-        <label htmlFor="pay-amount" className="block text-slate-700 text-sm font-medium mb-1.5">Amount received *</label>
+        <label htmlFor="pay-amount" className="block text-[13px] font-medium text-slate-700 mb-1.5">Amount received *</label>
         <div className="relative">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-medium">₹</span>
           <input id="pay-amount" required type="number" min="1" max={balance} step="0.01" inputMode="decimal" autoFocus
@@ -82,11 +82,11 @@ export default function RecordPaymentModal({ payment, tenantName, pendingCash = 
 
       <div className={`grid gap-3 ${cashMode ? 'grid-cols-1' : 'grid-cols-2'}`}>
         <div>
-          <label htmlFor="pay-date" className="block text-slate-700 text-sm font-medium mb-1.5">Date received</label>
+          <label htmlFor="pay-date" className="block text-[13px] font-medium text-slate-700 mb-1.5">Date received</label>
           <input id="pay-date" required type="date" max={todayISO()} value={date} onChange={e => setDate(e.target.value)} className={inputCls} />
         </div>
         {!cashMode && <div>
-          <label htmlFor="pay-method" className="block text-slate-700 text-sm font-medium mb-1.5">Method</label>
+          <label htmlFor="pay-method" className="block text-[13px] font-medium text-slate-700 mb-1.5">Method</label>
           <select id="pay-method" value={method} onChange={e => setMethod(e.target.value)} className={inputCls}>
             {Object.entries(PAYMENT_METHOD_LABELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
           </select>
@@ -94,7 +94,7 @@ export default function RecordPaymentModal({ payment, tenantName, pendingCash = 
       </div>
 
       <div>
-        <label htmlFor="pay-note" className="block text-slate-700 text-sm font-medium mb-1.5">
+        <label htmlFor="pay-note" className="block text-[13px] font-medium text-slate-700 mb-1.5">
           Reference / note <span className="text-slate-400 font-normal">(optional)</span>
         </label>
         <input id="pay-note" type="text" maxLength={200} value={note} onChange={e => setNote(e.target.value)} placeholder={cashMode ? 'e.g. Paid at the gate, 500×4 notes' : 'e.g. UPI ref 412345678901'} className={inputCls} />
@@ -103,10 +103,10 @@ export default function RecordPaymentModal({ payment, tenantName, pendingCash = 
       <FormError message={error} />
 
       <div className="flex items-center justify-end gap-3 pt-2">
-        <button type="button" onClick={onClose} disabled={busy} className="px-5 py-2.5 text-sm font-medium text-slate-600 border border-slate-200 rounded-xl hover:border-slate-300 transition-colors disabled:opacity-50">
+        <button type="button" onClick={onClose} disabled={busy} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md border border-slate-200 bg-white font-medium text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50">
           Cancel
         </button>
-        <button type="submit" disabled={busy || amountNum <= 0} className="px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition-colors disabled:opacity-60">
+        <button type="submit" disabled={busy || amountNum <= 0} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md bg-indigo-600 font-medium text-white shadow-xs transition-colors hover:bg-indigo-700 disabled:opacity-50">
           {busy ? 'Saving…' : cashMode ? 'Log cash collected' : 'Record payment'}
         </button>
       </div>

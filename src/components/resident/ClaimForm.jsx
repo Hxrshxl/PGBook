@@ -7,8 +7,8 @@ import { uploadPhoto } from '@/utils/imageUpload'
 import { todayISO } from '@/utils/helpers'
 import FormError from '@/components/ui/FormError'
 
-const inputCls = 'w-full border border-slate-200 rounded-xl px-3 py-2.5 text-base text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500'
-const labelCls = 'block text-slate-700 text-sm font-medium mb-1.5'
+const inputCls = 'w-full border border-slate-200 rounded-md px-3 py-2.5 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 bg-white'
+const labelCls = 'block text-[13px] font-medium text-slate-700 mb-1.5'
 
 // "I've paid": months with a balance → amount, date, UTR and an optional screenshot.
 export default function ClaimForm({ months, onDone, onCancel }) {
@@ -76,8 +76,8 @@ export default function ClaimForm({ months, onDone, onCancel }) {
       <p className="text-xs text-slate-500">Your PG checks their account and confirms it. Your receipt appears once confirmed.</p>
       <FormError message={error} />
       <div className="flex gap-3">
-        <button type="button" onClick={onCancel} disabled={busy} className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium disabled:opacity-50">Cancel</button>
-        <button type="submit" disabled={busy || !form.paymentId} className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold disabled:opacity-60">{busy ? 'Sending…' : 'Send to PG'}</button>
+        <button type="button" onClick={onCancel} disabled={busy} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-10 px-4 text-sm rounded-md border border-slate-200 bg-white font-medium text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50 flex-1">Cancel</button>
+        <button type="submit" disabled={busy || !form.paymentId} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-10 px-4 text-sm rounded-md bg-indigo-600 font-medium text-white shadow-xs transition-colors hover:bg-indigo-700 disabled:opacity-50 flex-1">{busy ? 'Sending…' : 'Send to PG'}</button>
       </div>
     </form>
   )

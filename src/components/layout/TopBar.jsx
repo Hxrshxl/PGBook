@@ -1,15 +1,16 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
-import { Menu, LogOut, ChevronDown, Settings, Building } from 'lucide-react'
+import { Menu, LogOut, ChevronsUpDown, Settings } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useAppData } from '@/context/AppContext'
+import { initials } from '@/utils/helpers'
 import NotificationBell from './NotificationBell'
 
 export default function TopBar({ onMenuClick }) {
   const { user, access, logout } = useAuth()
   const { properties, selectedPropertyId, selectProperty } = useAppData()
-  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   async function handleLogout() {
     await logout()
@@ -17,64 +18,57 @@ export default function TopBar({ onMenuClick }) {
   }
 
   return (
-    <header className="h-16 bg-white border-b border-slate-100 flex items-center justify-between gap-3 px-5 shrink-0 z-20">
-      <div className="flex items-center gap-3 min-w-0">
-        <button onClick={onMenuClick} aria-label="Open menu" className="lg:hidden text-slate-500 hover:text-slate-700 p-1">
-          <Menu size={20} />
+    <header className="z-20 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 sm:px-6">
+      <div className="flex min-w-0 items-center gap-2">
+        <button onClick={onMenuClick} aria-label="Open menu" className="lg:hidden -ml-1.5 inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100">
+          <Menu size={18} />
         </button>
         {properties.length > 1 ? (
           <div className="relative min-w-0">
-            <Building size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <select
               aria-label="Property"
               value={selectedPropertyId}
               onChange={e => selectProperty(e.target.value)}
-              className="max-w-[60vw] sm:max-w-xs appearance-none border border-slate-200 rounded-lg pl-8 pr-8 py-1.5 text-sm font-medium text-slate-800 bg-white hover:border-slate-300 focus:outline-none focus:border-indigo-500 truncate"
+              className="h-8 max-w-[60vw] sm:max-w-xs appearance-none truncate rounded-md border border-slate-200 bg-white pl-2.5 pr-8 text-[13px] font-medium text-slate-900 shadow-xs hover:bg-slate-50 focus:outline-none focus:border-indigo-500"
             >
-              <option value="all">All properties ({properties.length})</option>
+              <option value="all">All properties</option>
               {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
-            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <ChevronsUpDown size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
           </div>
         ) : properties[0] && (
-          <span className="text-slate-500 text-sm font-medium hidden sm:block truncate">{properties[0].name}</span>
+          <span className="hidden sm:block truncate text-[13px] font-medium text-slate-900">{properties[0].name}</span>
         )}
         {access && access.role !== 'owner' && (
-          <span className="hidden sm:inline text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 shrink-0">{access.roleLabel}</span>
+          <span className="hidden sm:inline-flex shrink-0 items-center rounded-md bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600">{access.roleLabel}</span>
         )}
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1">
         <NotificationBell />
-
         <div className="relative">
           <button
-            onClick={() => setDropdownOpen(v => !v)}
-            aria-expanded={dropdownOpen}
-            className="flex items-center gap-2 hover:bg-slate-100 rounded-lg px-2 py-1.5 transition-colors"
+            onClick={() => setMenuOpen(v => !v)}
+            aria-expanded={menuOpen}
+            aria-label="Account menu"
+            className="ml-1 flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-xs font-medium text-slate-700 hover:ring-2 hover:ring-slate-200 transition-shadow"
           >
-            <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold">
-              {user?.name?.[0]?.toUpperCase() ?? 'U'}
-            </div>
-            <span className="text-slate-700 text-sm font-medium hidden sm:block max-w-30 truncate">{user?.name}</span>
-            <ChevronDown size={14} className="text-slate-400 hidden sm:block" />
+            {initials(user?.name)}
           </button>
-
-          {dropdownOpen && (
+          {menuOpen && (
             <>
-              <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
-              <div className="absolute right-0 top-full mt-1.5 w-52 bg-white border border-slate-200 rounded-xl shadow-lg z-20 overflow-hidden">
-                <div className="px-4 py-3 border-b border-slate-100">
-                  <p className="text-slate-900 text-sm font-semibold truncate">{user?.name}</p>
-                  <p className="text-slate-400 text-xs truncate">{user?.email}</p>
+              <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+              <div className="absolute right-0 top-full z-20 mt-2 w-56 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                <div className="px-3 py-2">
+                  <p className="truncate text-sm font-medium text-slate-900">{user?.name}</p>
+                  <p className="truncate text-xs text-slate-500">{user?.email}</p>
                 </div>
-                <Link href="/dashboard/settings" onClick={() => setDropdownOpen(false)} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors">
-                  <Settings size={14} />
-                  Settings
+                <div className="my-1 h-px bg-slate-100" />
+                <Link href="/dashboard/settings" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
+                  <Settings size={14} className="text-slate-400" /> Settings
                 </Link>
-                <button onClick={handleLogout} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
-                  <LogOut size={14} />
-                  Sign out
+                <button onClick={handleLogout} className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
+                  <LogOut size={14} className="text-slate-400" /> Sign out
                 </button>
               </div>
             </>

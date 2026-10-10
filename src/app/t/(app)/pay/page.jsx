@@ -50,14 +50,14 @@ export default function TenantPay() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold text-slate-900">Payments</h1>
-        {data.access === 'full' && open.length > 0 && <button onClick={() => setClaiming(true)} className="text-sm font-semibold text-indigo-600">I&apos;ve paid</button>}
+        <h1 className="text-lg font-semibold text-slate-900">Payments</h1>
+        {data.access === 'full' && open.length > 0 && <button onClick={() => setClaiming(true)} className="text-sm font-medium text-indigo-700">I&apos;ve paid</button>}
       </div>
       <p className="text-xs text-slate-500">Monthly: rent {formatCurrency(data.stay.rentAmount)}{data.stay.recurringCharges.map(c => ` + ${c.label} ${formatCurrency(c.amount)}`).join('')} = <strong>{formatCurrency(data.stay.monthlyTotal)}</strong>{data.stay.depositAmount ? ` · deposit held ${formatCurrency(data.stay.depositAmount)}` : ''}</p>
 
-      {data.dues.length === 0 && <p className="text-sm text-slate-400 text-center py-10">No dues yet.</p>}
+      {data.dues.length === 0 && <p className="text-sm text-slate-500 text-center py-10">No dues yet.</p>}
       {data.dues.map(d => (
-        <section key={d.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+        <section key={d.id} className="bg-white rounded-xl border border-slate-200 p-4">
           <div className="flex items-center justify-between">
             <p className="font-semibold text-slate-900">{d.monthLabel}</p>
             <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full capitalize ${STATUS[d.status]}`}>{d.status}</span>
@@ -72,7 +72,7 @@ export default function TenantPay() {
             {d.balance > 0 && <div className="flex justify-between font-semibold text-amber-700"><span>Still due</span><span>{formatCurrency(d.balance)}</span></div>}
           </div>
           {d.entries.length > 0 && (
-            <ul className="mt-2 text-[11px] text-slate-400 space-y-0.5">
+            <ul className="mt-2 text-xs text-slate-500 space-y-0.5">
               {d.entries.map(e => <li key={e.id}>{formatDate(e.date)} · {formatCurrency(e.amount)} · {PAYMENT_METHOD_LABELS[e.method] ?? e.method}{e.source === 'deposit' ? ' (from deposit)' : ''}</li>)}
             </ul>
           )}
@@ -84,7 +84,7 @@ export default function TenantPay() {
             </div>
           ))}
           {d.amountPaid > 0 && (
-            <button onClick={() => openReceipt(d)} className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-indigo-600"><FileText size={13} /> Receipt</button>
+            <button onClick={() => openReceipt(d)} className="mt-3 flex items-center gap-1.5 text-xs font-medium text-indigo-700"><FileText size={13} /> Receipt</button>
           )}
         </section>
       ))}
@@ -98,7 +98,7 @@ export default function TenantPay() {
             <div ref={printRef} className="overflow-x-auto -mx-2">
               <ReceiptTemplate tenant={receipt.tenant} payment={receipt.payment} pgSettings={receipt.settings} receiptNumber={`RCPT-${receipt.payment.month.replace('-', '')}-${receipt.payment.id.slice(-6).toUpperCase()}`} />
             </div>
-            <button onClick={() => printHtml(printRef.current.innerHTML, `Receipt ${receipt.payment.month}`)} className="mt-4 w-full py-3 rounded-xl bg-indigo-600 text-white text-sm font-semibold">Save as PDF / Print</button>
+            <button onClick={() => printHtml(printRef.current.innerHTML, `Receipt ${receipt.payment.month}`)} className="mt-4 w-full py-3 rounded-xl bg-indigo-600 text-white text-sm font-medium">Save as PDF / Print</button>
           </>
         )}
       </Sheet>

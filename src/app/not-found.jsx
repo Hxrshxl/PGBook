@@ -1,25 +1,24 @@
-'use client'
 import Link from 'next/link'
-import { Building2, Home } from 'lucide-react'
+import Logo from '@/components/ui/Logo'
+import { button } from '@/components/ui/styles'
 
 export default function NotFound() {
   return (
-    <div className="hero-bg min-h-screen flex flex-col items-center justify-center text-center px-5">
-      <div className="w-16 h-16 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center mb-6">
-        <Building2 size={28} className="text-indigo-400" />
-      </div>
-      <h1 className="text-7xl font-bold text-white mb-2">404</h1>
-      <p className="text-2xl font-semibold text-slate-300 mb-3">Room not found</p>
-      <p className="text-slate-500 text-base max-w-sm mb-8">
-        This page doesn't exist or may have been moved. Let's get you back home.
-      </p>
-      <Link
-        href="/"
-        className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-6 py-3 rounded-xl transition-colors"
-      >
-        <Home size={18} />
-        Back to Home
-      </Link>
+    <div className="flex min-h-screen flex-col bg-white">
+      <header className="px-6 py-5">
+        <Link href="/" aria-label="PGBook home" className="inline-flex"><Logo /></Link>
+      </header>
+      <main className="flex flex-1 items-start justify-center px-6 pt-[14vh]">
+        <div className="max-w-md">
+          <p className="text-sm font-medium tabular-nums text-slate-500">404</p>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">This page doesn&apos;t exist</h1>
+          <p className="mt-2 text-sm leading-relaxed text-slate-600">The link may be old, or the page may have moved. Check the address, or go back to where you started.</p>
+          <div className="mt-6 flex gap-2">
+            <Link href="/dashboard" className={button('primary')}>Go to dashboard</Link>
+            <Link href="/" className={button('secondary')}>Home page</Link>
+          </div>
+        </div>
+      </main>
     </div>
   )
 }

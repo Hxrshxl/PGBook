@@ -45,11 +45,11 @@ function StepUpPrompt({ onDone }) {
           onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
           placeholder="123456"
           aria-label="6-digit code"
-          className="w-full text-center tracking-[0.5em] text-2xl font-semibold border border-slate-200 rounded-xl px-3 py-3 text-slate-900 focus:outline-none focus:border-indigo-500"
+          className="w-full text-center tracking-[0.5em] text-2xl font-semibold border border-slate-200 rounded-md px-3 py-3 text-slate-900 focus:outline-none focus:border-indigo-500 bg-white"
         />
         {error && <div className="mt-3 text-left"><FormError message={error} /></div>}
         <div className="flex gap-3 mt-5">
-          <button type="button" onClick={() => onDone(false)} className="flex-1 px-4 py-2.5 text-sm font-medium text-slate-600 border border-slate-200 rounded-xl hover:border-slate-300">Cancel</button>
+          <button type="button" onClick={() => onDone(false)} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-10 px-4 text-sm rounded-md border border-slate-200 bg-white font-medium text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50 flex-1">Cancel</button>
           <button type="submit" disabled={busy || code.length !== 6} className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl disabled:opacity-50">
             {busy ? 'Checking…' : 'Verify'}
           </button>

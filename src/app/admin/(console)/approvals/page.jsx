@@ -25,7 +25,7 @@ function InviteLink({ url, onClose }) {
       <p className="text-sm text-slate-600 mb-3">Send this single-use link to the new admin through a private channel. It expires in 72 hours and won&apos;t be shown again (a Super Admin can issue a new one from Admin Team).</p>
       <div className="flex gap-2">
         <input readOnly value={url} aria-label="Invite link" className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 bg-slate-50" onFocus={e => e.target.select()} />
-        <button onClick={async () => { await navigator.clipboard.writeText(url); setCopied(true) }} className="flex items-center gap-1.5 text-sm font-medium px-3 rounded-xl bg-indigo-600 text-white hover:bg-indigo-500">
+        <button onClick={async () => { await navigator.clipboard.writeText(url); setCopied(true) }} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md bg-indigo-600 font-medium text-white shadow-xs transition-colors hover:bg-indigo-700 disabled:opacity-50">
           {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? 'Copied' : 'Copy'}
         </button>
       </div>
@@ -78,15 +78,15 @@ export default function ApprovalsPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto">
+    <div className="px-4 py-6 sm:px-6 lg:px-8 lg:py-8 max-w-4xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Approvals</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-slate-900">Approvals</h1>
         <p className="text-slate-500 text-sm mt-1">Changes that need a second person. You can never approve your own request, and approving needs a fresh 2FA code.</p>
       </div>
 
       <div className="flex gap-1 bg-slate-200/60 p-1 rounded-xl w-fit mb-6">
         {VIEWS.map(v => (
-          <button key={v.key} onClick={() => setView(v.key)} className={`px-4 py-1.5 rounded-lg text-sm font-medium ${view === v.key ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+          <button key={v.key} onClick={() => setView(v.key)} className={`px-4 py-1.5 rounded-lg text-sm font-medium ${view === v.key ? 'bg-white text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}>
             {v.label}{v.key === 'waiting' && data?.counts.waiting ? ` (${data.counts.waiting})` : ''}
           </button>
         ))}
@@ -97,7 +97,7 @@ export default function ApprovalsPage() {
       ) : (
         <ul className="space-y-3">
           {data.items.map(a => (
-            <li key={a.id} className="bg-white rounded-2xl border border-slate-200 p-5">
+            <li key={a.id} className="bg-white rounded-xl border border-slate-200 p-5">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -142,13 +142,13 @@ export default function ApprovalsPage() {
             </div>
             {deciding.decision === 'approve' && <p className="text-sm text-slate-600">It is applied immediately, re-checked against current data. You&apos;ll be asked for a 2FA code.</p>}
             <div>
-              <label htmlFor="note" className="block text-slate-700 text-sm font-medium mb-1.5">{deciding.decision === 'reject' ? 'Why are you rejecting it? *' : 'Note (optional)'}</label>
+              <label htmlFor="note" className="block text-[13px] font-medium text-slate-700 mb-1.5">{deciding.decision === 'reject' ? 'Why are you rejecting it? *' : 'Note (optional)'}</label>
               <textarea id="note" rows={3} maxLength={1000} required={deciding.decision === 'reject'} minLength={deciding.decision === 'reject' ? 3 : undefined}
-                value={note} onChange={e => setNote(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 resize-none" />
+                value={note} onChange={e => setNote(e.target.value)} className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 resize-none bg-white" />
             </div>
             <FormError message={error} />
             <div className="flex justify-end gap-3">
-              <button type="button" onClick={() => setDeciding(null)} disabled={busy} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-xl">Cancel</button>
+              <button type="button" onClick={() => setDeciding(null)} disabled={busy} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md border border-slate-200 bg-white font-medium text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50">Cancel</button>
               <button type="submit" disabled={busy} className={`px-5 py-2 text-sm font-semibold text-white rounded-xl disabled:opacity-50 ${deciding.decision === 'approve' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-rose-600 hover:bg-rose-500'}`}>
                 {busy ? 'Working…' : deciding.decision === 'approve' ? 'Approve' : 'Reject'}
               </button>

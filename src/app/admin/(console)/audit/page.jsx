@@ -10,7 +10,7 @@ import Spinner from '@/components/ui/Spinner'
 import Pill from '@/components/admin/Pill'
 import { dateTime } from '@/components/admin/format'
 
-const inputCls = 'border border-slate-200 bg-white rounded-xl px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-indigo-500'
+const inputCls = 'border border-slate-200 bg-white rounded-md px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-indigo-500'
 const EMPTY = { realm: '', action: '', actor: '', orgId: '', from: '', to: '' }
 
 export default function AuditLogPage() {
@@ -74,10 +74,10 @@ export default function AuditLogPage() {
   const set = key => e => setForm(prev => ({ ...prev, [key]: e.target.value }))
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+    <div className="px-4 py-6 sm:px-6 lg:px-8 lg:py-8 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Audit Log</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-slate-900">Audit log</h1>
           <p className="text-slate-500 text-sm mt-1">Every sign-in, change and decision across the platform. Append-only — nobody can edit or delete entries.</p>
         </div>
         {can('audit.export') && (
@@ -99,15 +99,15 @@ export default function AuditLogPage() {
         <input aria-label="Owner account ID" placeholder="Owner account ID" value={form.orgId} onChange={set('orgId')} className={`${inputCls} w-56`} />
         <input aria-label="From date" type="date" value={form.from} onChange={set('from')} className={inputCls} />
         <input aria-label="To date" type="date" value={form.to} onChange={set('to')} className={inputCls} />
-        <button type="submit" className="flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-500"><Filter size={14} /> Apply</button>
+        <button type="submit" className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md bg-indigo-600 font-medium text-white shadow-xs transition-colors hover:bg-indigo-700 disabled:opacity-50"><Filter size={14} /> Apply</button>
         <button type="button" onClick={() => { setForm(EMPTY); setFilters(EMPTY) }} className="text-sm text-slate-500 px-2">Clear</button>
       </form>
 
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[900px]">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-left text-xs uppercase tracking-wider text-slate-500">
+              <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
                 <th scope="col" className="px-4 py-3 font-medium">When</th>
                 <th scope="col" className="px-4 py-3 font-medium">Who</th>
                 <th scope="col" className="px-4 py-3 font-medium">What</th>
@@ -141,7 +141,7 @@ export default function AuditLogPage() {
         </div>
         {(loading || cursor) && (
           <div className="p-3 flex justify-center border-t border-slate-100">
-            {loading ? <Spinner /> : <button onClick={more} className="text-sm text-slate-600 border border-slate-200 rounded-xl px-4 py-1.5 hover:border-slate-300">Load older</button>}
+            {loading ? <Spinner /> : <button onClick={more} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-8 px-2.5 text-[13px] rounded-md border border-slate-200 bg-white font-medium text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50">Load older</button>}
           </div>
         )}
       </div>

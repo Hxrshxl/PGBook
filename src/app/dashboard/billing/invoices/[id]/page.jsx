@@ -16,11 +16,11 @@ export default function InvoicePage({ params }) {
   useEffect(() => { api.get(`/billing/invoices/${id}`).then(setInvoice).catch(e => setError(e.message)) }, [id])
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto">
+    <div className="px-4 py-6 sm:px-6 lg:px-8 lg:py-8 max-w-4xl mx-auto">
       <div className="flex items-center justify-between gap-3 mb-6">
         <Link href="/dashboard/billing" className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800"><ArrowLeft size={15} /> Subscription</Link>
         {invoice && (
-          <button onClick={() => printHtml(ref.current.innerHTML, invoice.number)} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm px-4 py-2 rounded-xl">
+          <button onClick={() => printHtml(ref.current.innerHTML, invoice.number)} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md bg-indigo-600 font-medium text-white shadow-xs transition-colors hover:bg-indigo-700 disabled:opacity-50">
             <Printer size={15} /> Print / Save PDF
           </button>
         )}

@@ -17,7 +17,7 @@ const TABS = ['overview', 'billing', 'activity', 'security']
 function Stat({ label, value, sub }) {
   return (
     <div className="bg-slate-50 rounded-xl p-3">
-      <p className="text-lg font-bold text-slate-900">{value}</p>
+      <p className="text-lg font-semibold text-slate-900">{value}</p>
       <p className="text-xs text-slate-500">{label}</p>
       {sub && <p className="text-[11px] text-slate-400">{sub}</p>}
     </div>
@@ -43,7 +43,7 @@ function ActivityTab({ ownerId }) {
   useEffect(() => { load() }, [load])
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
       <p className="px-4 py-3 text-xs text-slate-500 bg-slate-50 border-b border-slate-100">
         <Lock size={12} className="inline mr-1 -mt-0.5" />
         Business events show what happened, not amounts or tenant names — that data belongs to the owner.
@@ -63,7 +63,7 @@ function ActivityTab({ ownerId }) {
       {(loading || cursor) && (
         <div className="p-3 flex justify-center border-t border-slate-100">
           {loading ? <Spinner /> : (
-            <button onClick={() => load(cursor)} className="text-sm text-slate-600 border border-slate-200 rounded-xl px-4 py-1.5 hover:border-slate-300">Load older</button>
+            <button onClick={() => load(cursor)} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-8 px-2.5 text-[13px] rounded-md border border-slate-200 bg-white font-medium text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50">Load older</button>
           )}
         </div>
       )}
@@ -111,14 +111,14 @@ export default function OwnerDetailPage() {
   const btn = 'flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-xl border transition-colors'
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-6">
+    <div className="px-4 py-6 sm:px-6 lg:px-8 lg:py-8 max-w-6xl mx-auto space-y-6">
       <Link href="/admin/owners" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700"><ArrowLeft size={15} /> Owners</Link>
 
-      <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6">
+      <div className="bg-white rounded-xl border border-slate-200 p-5 sm:p-6">
         <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-5">
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl font-bold text-slate-900">{owner.name}</h1>
+              <h1 className="text-xl font-semibold text-slate-900">{owner.name}</h1>
               <Pill tone={owner.status}>{owner.status}</Pill>
               <Pill tone={p.tone}>{p.label}</Pill>
             </div>
@@ -165,13 +165,13 @@ export default function OwnerDetailPage() {
 
       <div className="flex gap-1 bg-slate-200/60 p-1 rounded-xl w-fit">
         {TABS.map(t => (
-          <button key={t} onClick={() => setTab(t)} className={`px-4 py-1.5 rounded-lg text-sm font-medium capitalize ${tab === t ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>{t}</button>
+          <button key={t} onClick={() => setTab(t)} className={`px-4 py-1.5 rounded-lg text-sm font-medium capitalize ${tab === t ? 'bg-white text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}>{t}</button>
         ))}
       </div>
 
       {tab === 'overview' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <section className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-5">
+          <section className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-5">
             <h2 className="font-semibold text-slate-900 text-sm mb-1">Usage</h2>
             <p className="text-xs text-slate-400 mb-4">Counts only. Amounts and tenant details stay private to the owner.</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -185,7 +185,7 @@ export default function OwnerDetailPage() {
               <Stat label="Owner actions (30d)" value={usage.ownerActions30} />
             </div>
           </section>
-          <section className="bg-white rounded-2xl border border-slate-200 p-5">
+          <section className="bg-white rounded-xl border border-slate-200 p-5">
             <h2 className="font-semibold text-slate-900 text-sm mb-3">Account</h2>
             <dl className="space-y-2 text-sm">
               {[
@@ -206,7 +206,7 @@ export default function OwnerDetailPage() {
 
       {tab === 'billing' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <section className="bg-white rounded-2xl border border-slate-200 p-5">
+          <section className="bg-white rounded-xl border border-slate-200 p-5">
             <h2 className="font-semibold text-slate-900 text-sm mb-3">Subscription</h2>
             <dl className="space-y-2 text-sm">
               {[
@@ -226,7 +226,7 @@ export default function OwnerDetailPage() {
               ))}
             </dl>
           </section>
-          <section className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+          <section className="lg:col-span-2 bg-white rounded-xl border border-slate-200 overflow-hidden">
             <h2 className="font-semibold text-slate-900 text-sm px-5 py-3.5 border-b border-slate-100">PGBook invoices</h2>
             <ul className="divide-y divide-slate-100">
               {billing.invoices.map(i => (
@@ -245,7 +245,7 @@ export default function OwnerDetailPage() {
       {tab === 'activity' && <ActivityTab ownerId={owner.id} />}
 
       {tab === 'security' && (
-        <section className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+        <section className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
             <h2 className="font-semibold text-slate-900 text-sm">Recent sign-ins</h2>
             <button onClick={load} className="text-slate-400 hover:text-slate-600" aria-label="Refresh"><RefreshCw size={14} /></button>
@@ -278,13 +278,13 @@ export default function OwnerDetailPage() {
         >
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="set-plan" className="block text-slate-700 text-sm font-medium mb-1.5">Plan</label>
+              <label htmlFor="set-plan" className="block text-[13px] font-medium text-slate-700 mb-1.5">Plan</label>
               <select id="set-plan" value={planChoice} onChange={e => setPlanChoice(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm">
                 {allowed.setPlan.map(pl => <option key={pl.id} value={pl.id}>{pl.label}</option>)}
               </select>
             </div>
             <div>
-              <label htmlFor="set-until" className="block text-slate-700 text-sm font-medium mb-1.5">Until <span className="text-slate-400 font-normal">(optional)</span></label>
+              <label htmlFor="set-until" className="block text-[13px] font-medium text-slate-700 mb-1.5">Until <span className="text-slate-400 font-normal">(optional)</span></label>
               <input id="set-until" type="date" value={planUntil} onChange={e => setPlanUntil(e.target.value)} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm" />
             </div>
           </div>
@@ -302,9 +302,9 @@ export default function OwnerDetailPage() {
         reasonHint="Shown to the owner in their Activity log."
       >
         <div>
-          <label htmlFor="days" className="block text-slate-700 text-sm font-medium mb-1.5">Days to add</label>
+          <label htmlFor="days" className="block text-[13px] font-medium text-slate-700 mb-1.5">Days to add</label>
           <input id="days" type="number" min={1} max={allowed.extendTrialDays} value={days} onChange={e => setDays(Number(e.target.value))}
-            className="w-32 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-indigo-500" />
+            className="w-32 border border-slate-200 rounded-md px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 bg-white" />
         </div>
       </ReasonDialog>
 

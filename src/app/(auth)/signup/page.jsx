@@ -2,8 +2,10 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Building2, Eye, EyeOff, AlertCircle } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
+import AuthShell, { AuthError } from '@/components/ui/AuthShell'
+import { btn, field } from '@/components/ui/styles'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -24,76 +26,52 @@ export default function SignupPage() {
       await signup({ name: form.name, pgName: form.pgName, email: form.email, password: form.password })
       router.replace('/dashboard')
     } catch (err) {
-      setError(err.message ?? 'Signup failed.')
+      setError(err.message ?? 'Could not create your account.')
       setLoading(false)
     }
   }
 
-  const inputCls = 'w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition-colors'
-
   return (
-    <div className="hero-bg min-h-screen flex items-center justify-center px-5 py-12">
-      <div className="w-full max-w-md">
-        <div className="flex items-center justify-center gap-2.5 mb-8">
-          <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center">
-            <Building2 size={20} className="text-white" />
+    <AuthShell
+      title="Start your free trial"
+      subtitle="14 days with every feature. No card needed."
+      footer={<>Already have an account? <Link href="/login" className="font-medium text-slate-900 underline-offset-4 hover:underline">Sign in</Link></>}
+    >
+      <AuthError message={error} />
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="name" className={field.label}>Your name</label>
+            <input id="name" type="text" autoComplete="name" required value={form.name} onChange={e => update('name', e.target.value)} className={field.input} />
           </div>
-          <span style={{ fontFamily: 'Space Grotesk' }} className="text-white font-bold text-2xl tracking-tight">
-            PG<span className="text-indigo-400">Book</span>
-          </span>
+          <div>
+            <label htmlFor="pgName" className={field.label}>PG name</label>
+            <input id="pgName" type="text" value={form.pgName} onChange={e => update('pgName', e.target.value)} placeholder="Sunrise PG" className={field.input} />
+          </div>
         </div>
-
-        <div className="bg-[#111827] border border-white/10 rounded-2xl p-8">
-          <h1 className="text-xl font-bold text-white mb-1">Start your free trial</h1>
-          <p className="text-slate-400 text-sm mb-6">14 days free · No credit card required</p>
-
-          {error && (
-            <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 mb-5">
-              <AlertCircle size={16} className="text-red-400 shrink-0" />
-              <p className="text-red-300 text-sm">{error}</p>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-slate-400 text-sm font-medium mb-1.5">Your name</label>
-                <input type="text" required value={form.name} onChange={e => update('name', e.target.value)} placeholder="Ramesh Kumar" className={inputCls} />
-              </div>
-              <div>
-                <label className="block text-slate-400 text-sm font-medium mb-1.5">PG name</label>
-                <input type="text" value={form.pgName} onChange={e => update('pgName', e.target.value)} placeholder="Kumar's PG" className={inputCls} />
-              </div>
-            </div>
-            <div>
-              <label className="block text-slate-400 text-sm font-medium mb-1.5">Email address</label>
-              <input type="email" required value={form.email} onChange={e => update('email', e.target.value)} placeholder="you@example.com" className={`${inputCls} px-4`} />
-            </div>
-            <div>
-              <label className="block text-slate-400 text-sm font-medium mb-1.5">Password</label>
-              <div className="relative">
-                <input type={showPassword ? 'text' : 'password'} required value={form.password} onChange={e => update('password', e.target.value)} placeholder="Min. 8 characters" minLength={8} className={`${inputCls} px-4 pr-10`} />
-                <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
-            <div>
-              <label className="block text-slate-400 text-sm font-medium mb-1.5">Confirm password</label>
-              <input type="password" required value={form.confirm} onChange={e => update('confirm', e.target.value)} placeholder="Re-enter password" className={`${inputCls} px-4`} />
-            </div>
-            <button type="submit" disabled={loading}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white font-semibold py-3 rounded-xl text-sm transition-colors mt-2">
-              {loading ? 'Creating account…' : 'Create account'}
+        <div>
+          <label htmlFor="email" className={field.label}>Email</label>
+          <input id="email" type="email" autoComplete="email" required value={form.email} onChange={e => update('email', e.target.value)} placeholder="you@example.com" className={field.input} />
+        </div>
+        <div>
+          <label htmlFor="password" className={field.label}>Password</label>
+          <div className="relative">
+            <input id="password" type={showPassword ? 'text' : 'password'} autoComplete="new-password" required minLength={8} value={form.password} onChange={e => update('password', e.target.value)} className={`${field.input} pr-9`} />
+            <button type="button" onClick={() => setShowPassword(v => !v)} aria-label={showPassword ? 'Hide password' : 'Show password'} className="absolute right-1.5 top-1/2 -translate-y-1/2 inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 hover:text-slate-700">
+              {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
             </button>
-          </form>
-
-          <p className="text-slate-500 text-sm text-center mt-6">
-            Already have an account?{' '}
-            <Link href="/login" className="text-indigo-400 hover:text-indigo-300 font-medium">Sign in</Link>
-          </p>
+          </div>
+          <p className={field.help}>At least 8 characters.</p>
         </div>
-      </div>
-    </div>
+        <div>
+          <label htmlFor="confirm" className={field.label}>Confirm password</label>
+          <input id="confirm" type="password" autoComplete="new-password" required value={form.confirm} onChange={e => update('confirm', e.target.value)} className={field.input} />
+        </div>
+        <button type="submit" disabled={loading} className={`${btn.primary} w-full`}>
+          {loading ? 'Creating account…' : 'Create account'}
+        </button>
+        <p className="text-xs leading-relaxed text-slate-500">By creating an account you agree to keep your tenants&apos; data accurate and to use it only to run your PG.</p>
+      </form>
+    </AuthShell>
   )
 }

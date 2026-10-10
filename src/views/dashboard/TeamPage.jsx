@@ -1,19 +1,23 @@
 'use client'
 import { useCallback, useEffect, useState } from 'react'
-import { UserPlus, UsersRound, Copy, Check, Link2, Pencil, UserMinus, MessageCircle } from 'lucide-react'
+import { UserPlus, UsersRound, Copy, Check, MessageCircle } from 'lucide-react'
 import { api } from '@/utils/api'
 import { useAppData } from '@/context/AppContext'
 import { useToast } from '@/context/ToastContext'
 import { useAsyncAction } from '@/hooks/useAsyncAction'
-import { formatDate, initials, timeAgo } from '@/utils/helpers'
+import { formatDate, timeAgo } from '@/utils/helpers'
 import Modal from '@/components/ui/Modal'
 import EmptyState from '@/components/ui/EmptyState'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import FormError from '@/components/ui/FormError'
 import Spinner from '@/components/ui/Spinner'
+import Badge from '@/components/ui/Badge'
+import PageHeader from '@/components/ui/PageHeader'
+import RowMenu from '@/components/ui/RowMenu'
+import { btn, page } from '@/components/ui/styles'
 
-const inputCls = 'w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors'
-const labelCls = 'block text-slate-700 text-sm font-medium mb-1.5'
+const inputCls = 'w-full border border-slate-200 rounded-md px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 transition-colors bg-white'
+const labelCls = 'block text-[13px] font-medium text-slate-700 mb-1.5'
 
 function AccessFields({ roles, properties, value, onChange }) {
   const allProperties = value.propertyIds.length === 0
@@ -98,7 +102,7 @@ function InviteForm({ roles, properties, onDone, onCancel }) {
       <div className="space-y-4">
         <p className="text-sm text-slate-600">Send this link to <strong>{result.member.name}</strong>. They set their own password and can sign in as {result.member.roleLabel.toLowerCase()} straight away.</p>
         <InviteLink url={result.inviteUrl} name={result.member.name} />
-        <div className="flex justify-end"><button onClick={onCancel} className="px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl">Done</button></div>
+        <div className="flex justify-end"><button onClick={onCancel} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md bg-indigo-600 font-medium text-white shadow-xs transition-colors hover:bg-indigo-700 disabled:opacity-50">Done</button></div>
       </div>
     )
   }
@@ -118,8 +122,8 @@ function InviteForm({ roles, properties, onDone, onCancel }) {
       <AccessFields roles={roles} properties={properties} value={form} onChange={v => setForm(f => ({ ...f, ...v }))} />
       <FormError message={error} />
       <div className="flex justify-end gap-3 pt-1">
-        <button type="button" onClick={onCancel} disabled={busy} className="px-5 py-2.5 text-sm font-medium text-slate-600 border border-slate-200 rounded-xl hover:border-slate-300 disabled:opacity-50">Cancel</button>
-        <button type="submit" disabled={busy} className="px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl disabled:opacity-60">{busy ? 'Creating…' : 'Create invite link'}</button>
+        <button type="button" onClick={onCancel} disabled={busy} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md border border-slate-200 bg-white font-medium text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50">Cancel</button>
+        <button type="submit" disabled={busy} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md bg-indigo-600 font-medium text-white shadow-xs transition-colors hover:bg-indigo-700 disabled:opacity-50">{busy ? 'Creating…' : 'Create invite link'}</button>
       </div>
     </form>
   )
@@ -134,8 +138,8 @@ function EditAccessForm({ member, roles, properties, onSubmit, onCancel }) {
       <p className="text-xs text-slate-400">Changes apply on their next action, no sign-out needed.</p>
       <FormError message={error} />
       <div className="flex justify-end gap-3 pt-1">
-        <button type="button" onClick={onCancel} disabled={busy} className="px-5 py-2.5 text-sm font-medium text-slate-600 border border-slate-200 rounded-xl hover:border-slate-300 disabled:opacity-50">Cancel</button>
-        <button type="submit" disabled={busy} className="px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl disabled:opacity-60">{busy ? 'Saving…' : 'Save access'}</button>
+        <button type="button" onClick={onCancel} disabled={busy} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md border border-slate-200 bg-white font-medium text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50">Cancel</button>
+        <button type="submit" disabled={busy} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md bg-indigo-600 font-medium text-white shadow-xs transition-colors hover:bg-indigo-700 disabled:opacity-50">{busy ? 'Saving…' : 'Save access'}</button>
       </div>
     </form>
   )
@@ -190,66 +194,68 @@ export default function TeamPage() {
     )
   }
 
+  const statusLine = m => m.status === 'invited'
+    ? (m.inviteExpired ? 'Invite expired' : `Invite valid until ${formatDate(String(m.inviteExpiresAt).slice(0, 10))}`)
+    : m.lastActiveAt ? `Active ${timeAgo(m.lastActiveAt)}` : `Joined ${m.joinedAt ? formatDate(String(m.joinedAt).slice(0, 10)) : ''}`
+  const menuFor = m => [
+    { label: 'Change access', onClick: () => setEditing(m) },
+    { label: 'Send a new invite link', onClick: () => newLink(m), hidden: m.status !== 'invited' || linkBusy },
+    { divider: true },
+    { label: 'Remove from team', onClick: () => setRemoving(m), danger: true },
+  ]
+
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between gap-3 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Team</h1>
-          <p className="text-slate-500 text-sm mt-1">Give your manager, accountant or caretaker their own login with only the access they need</p>
-        </div>
-        <button onClick={() => setInviting(true)} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm px-4 py-2.5 rounded-xl transition-colors shrink-0">
-          <UserPlus size={16} /> <span className="hidden sm:inline">Invite</span>
-        </button>
-      </div>
+    <div className={`${page} mx-auto max-w-4xl`}>
+      <PageHeader
+        title="Team"
+        description="Give your manager, accountant or caretaker their own login with only the access they need."
+        actions={<button onClick={() => setInviting(true)} className={btn.primary}><UserPlus size={15} /> Invite</button>}
+      />
 
       {data.members.length === 0 ? (
         <EmptyState icon={UsersRound} title="It's just you for now" message="Invite staff so they can work in PGBook without your password. Everything they do is recorded in Activity." actionLabel="Invite someone" onAction={() => setInviting(true)} />
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mb-6">
-          <ul className="divide-y divide-slate-100">
-            {data.members.map(m => (
-              <li key={m.id} className="px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center shrink-0">{initials(m.name)}</div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-900 truncate">
-                      {m.name} <span className="ml-1 text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">{m.roleLabel}</span>
-                    </p>
-                    <p className="text-xs text-slate-500 truncate">{m.email} · {accessLabel(m)}</p>
-                    <p className="text-xs text-slate-400">
-                      {m.status === 'invited'
-                        ? (m.inviteExpired ? 'Invite expired — send a new link' : `Invited · link valid until ${formatDate(String(m.inviteExpiresAt).slice(0, 10))}`)
-                        : m.lastActiveAt ? `Active ${timeAgo(m.lastActiveAt)}` : `Joined ${m.joinedAt ? formatDate(String(m.joinedAt).slice(0, 10)) : ''}`}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-1.5 shrink-0 sm:justify-end">
-                  {m.status === 'invited' && (
-                    <button onClick={() => newLink(m)} disabled={linkBusy} className="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-indigo-600 px-2.5 py-1.5 rounded-lg hover:bg-slate-50 disabled:opacity-50">
-                      <Link2 size={13} /> New link
-                    </button>
-                  )}
-                  <button onClick={() => setEditing(m)} className="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-indigo-600 px-2.5 py-1.5 rounded-lg hover:bg-slate-50">
-                    <Pencil size={13} /> Access
-                  </button>
-                  <button onClick={() => setRemoving(m)} className="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-red-600 px-2.5 py-1.5 rounded-lg hover:bg-slate-50">
-                    <UserMinus size={13} /> Remove
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
+        <div className="mb-8 overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
+                <th scope="col" className="py-2.5 pl-5 pr-3 font-medium">Member</th>
+                <th scope="col" className="px-3 py-2.5 font-medium">Role</th>
+                <th scope="col" className="hidden px-3 py-2.5 font-medium md:table-cell">Properties</th>
+                <th scope="col" className="hidden px-3 py-2.5 font-medium sm:table-cell">Status</th>
+                <th scope="col" className="w-10 py-2.5 pl-3 pr-5"><span className="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {data.members.map(m => (
+                <tr key={m.id} className="hover:bg-slate-50/70">
+                  <td className="py-2.5 pl-5 pr-3">
+                    <p className="font-medium text-slate-900">{m.name}</p>
+                    <p className="max-w-[220px] truncate text-xs text-slate-500">{m.email}</p>
+                  </td>
+                  <td className="px-3 py-2.5 text-slate-700">{m.roleLabel}</td>
+                  <td className="hidden max-w-[220px] truncate px-3 py-2.5 text-slate-600 md:table-cell">{accessLabel(m)}</td>
+                  <td className="hidden px-3 py-2.5 sm:table-cell">
+                    {m.status === 'invited' ? <Badge tone={m.inviteExpired ? 'red' : 'amber'}>{m.inviteExpired ? 'Invite expired' : 'Invited'}</Badge> : <Badge status="active" />}
+                    <p className="mt-0.5 text-xs text-slate-500">{statusLine(m)}</p>
+                  </td>
+                  <td className="py-2.5 pl-3 pr-5 text-right"><RowMenu items={menuFor(m)} label={`Actions for ${m.name}`} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <h2 className="mb-3 text-sm font-semibold text-slate-900">What each role can do</h2>
+      <dl className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
         {data.roles.map(r => (
-          <div key={r.id} className="bg-slate-50 rounded-2xl border border-slate-100 p-4">
-            <p className="text-sm font-semibold text-slate-900">{r.label}</p>
-            <p className="text-xs text-slate-500 mt-1 leading-relaxed">{r.description}</p>
+          <div key={r.id} className="grid gap-1 px-5 py-3 sm:grid-cols-[160px_1fr] sm:gap-4">
+            <dt className="text-sm font-medium text-slate-900">{r.label}</dt>
+            <dd className="text-sm leading-relaxed text-slate-600">{r.description}</dd>
           </div>
         ))}
-      </div>
+      </dl>
 
       <Modal isOpen={inviting} onClose={() => setInviting(false)} title="Invite a team member" maxWidth="max-w-xl">
         {inviting && <InviteForm roles={data.roles} properties={properties} onDone={replaceMember} onCancel={() => setInviting(false)} />}

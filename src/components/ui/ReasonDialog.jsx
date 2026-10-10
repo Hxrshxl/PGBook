@@ -41,7 +41,7 @@ export default function ReasonDialog({ isOpen, title, description, confirmLabel 
         <div className="flex justify-end gap-3 pt-1">
           <button type="button" onClick={close} disabled={busy} className="px-4 py-2.5 text-sm font-medium text-slate-600 border border-slate-200 rounded-xl hover:border-slate-300 disabled:opacity-50">Cancel</button>
           <button type="submit" disabled={busy || reason.trim().length < 3}
-            className={`px-5 py-2.5 text-sm font-semibold text-white rounded-xl disabled:opacity-50 ${danger ? 'bg-rose-600 hover:bg-rose-500' : 'bg-indigo-600 hover:bg-indigo-500'}`}>
+            className={`px-5 py-2.5 text-sm font-semibold text-white rounded-xl disabled:opacity-50 ${danger ? 'bg-rose-600 hover:bg-rose-500' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
             {busy ? 'Working…' : confirmLabel}
           </button>
         </div>

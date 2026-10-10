@@ -63,13 +63,13 @@ export default function AddBillModal({ tenants: allTenants, properties = [], def
     run({ type: form.type, totalAmount: total, month: form.month, note: form.note, tenantIds: chosen.map(t => t.id), ...(propertyId ? { propertyId } : {}) })
   }
 
-  const inputCls = 'w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 transition-colors'
+  const inputCls = 'w-full border border-slate-200 rounded-md px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 transition-colors bg-white'
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       {choosesProperty && (
         <div>
-          <label htmlFor="bill-prop" className="block text-slate-700 text-sm font-medium mb-1.5">Property *</label>
+          <label htmlFor="bill-prop" className="block text-[13px] font-medium text-slate-700 mb-1.5">Property *</label>
           <select id="bill-prop" required value={propertyId} onChange={e => changeProperty(e.target.value)} className={inputCls}>
             {properties.map(pr => <option key={pr.id} value={pr.id}>{pr.name}</option>)}
           </select>
@@ -77,19 +77,19 @@ export default function AddBillModal({ tenants: allTenants, properties = [], def
       )}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label htmlFor="bill-type" className="block text-slate-700 text-sm font-medium mb-1.5">Bill type *</label>
+          <label htmlFor="bill-type" className="block text-[13px] font-medium text-slate-700 mb-1.5">Bill type *</label>
           <select id="bill-type" value={form.type} onChange={e => set('type', e.target.value)} className={inputCls}>
             {BILL_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
         </div>
         <div>
-          <label htmlFor="bill-month" className="block text-slate-700 text-sm font-medium mb-1.5">Charge to month *</label>
+          <label htmlFor="bill-month" className="block text-[13px] font-medium text-slate-700 mb-1.5">Charge to month *</label>
           <input id="bill-month" type="month" required max={getCurrentMonth()} value={form.month} onChange={e => e.target.value && changeMonth(e.target.value)} className={inputCls} />
         </div>
       </div>
 
       <div>
-        <label htmlFor="bill-amount" className="block text-slate-700 text-sm font-medium mb-1.5">Total bill amount *</label>
+        <label htmlFor="bill-amount" className="block text-[13px] font-medium text-slate-700 mb-1.5">Total bill amount *</label>
         <div className="relative">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-medium">₹</span>
           <input id="bill-amount" required type="number" min="1" step="0.01" inputMode="decimal" value={form.totalAmount}
@@ -139,17 +139,17 @@ export default function AddBillModal({ tenants: allTenants, properties = [], def
       )}
 
       <div>
-        <label htmlFor="bill-note" className="block text-slate-700 text-sm font-medium mb-1.5">Note <span className="text-slate-400 font-normal">(optional)</span></label>
+        <label htmlFor="bill-note" className="block text-[13px] font-medium text-slate-700 mb-1.5">Note <span className="text-slate-400 font-normal">(optional)</span></label>
         <input id="bill-note" type="text" maxLength={200} value={form.note} onChange={e => set('note', e.target.value)} placeholder="e.g. Meter reading 4521 → 5340" className={inputCls} />
       </div>
 
       <FormError message={error} />
 
       <div className="flex items-center justify-end gap-3 pt-2">
-        <button type="button" onClick={onClose} disabled={busy} className="px-5 py-2.5 text-sm font-medium text-slate-600 border border-slate-200 rounded-xl hover:border-slate-300 transition-colors disabled:opacity-50">
+        <button type="button" onClick={onClose} disabled={busy} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md border border-slate-200 bg-white font-medium text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50">
           Cancel
         </button>
-        <button type="submit" disabled={busy || chosen.length === 0 || total <= 0} className="px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 rounded-xl transition-colors">
+        <button type="submit" disabled={busy || chosen.length === 0 || total <= 0} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md bg-indigo-600 font-medium text-white shadow-xs transition-colors hover:bg-indigo-700 disabled:opacity-50">
           {busy ? 'Saving…' : 'Split & add to dues'}
         </button>
       </div>

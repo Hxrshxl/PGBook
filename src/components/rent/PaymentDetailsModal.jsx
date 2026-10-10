@@ -10,7 +10,7 @@ import { useAsyncAction } from '@/hooks/useAsyncAction'
 import Badge from '@/components/ui/Badge'
 import FormError from '@/components/ui/FormError'
 
-const inputCls = 'w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-indigo-500'
+const inputCls = 'w-full border border-slate-200 rounded-md px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 bg-white'
 
 /**
  * Everything about one month's dues: what makes up the total, every amount
@@ -73,7 +73,7 @@ export default function PaymentDetailsModal({ payment, tenantName, pendingCash =
         {payment.lateFee > 0 && row('Late fee', formatCurrency(payment.lateFee), 'text-red-600')}
         <div className="flex justify-between border-t border-slate-200 pt-2"><span className="text-slate-700 font-medium">Total due</span><span className="font-semibold text-slate-900">{formatCurrency(getTotalDue(payment))}</span></div>
         {row('Received', formatCurrency(payment.amountPaid ?? 0), 'text-emerald-600 font-medium')}
-        <div className="flex justify-between"><span className="text-slate-700 font-medium">Balance</span><span className="font-bold text-amber-700">{formatCurrency(getBalance(payment))}</span></div>
+        <div className="flex justify-between"><span className="text-slate-700 font-medium">Balance</span><span className="font-semibold text-amber-700">{formatCurrency(getBalance(payment))}</span></div>
         {pendingCashTotal > 0 && (
           <div className="flex justify-between text-amber-700"><span className="flex items-center gap-1"><Clock size={12} /> Cash awaiting confirmation</span><span>{formatCurrency(pendingCashTotal)}</span></div>
         )}
@@ -166,8 +166,8 @@ export default function PaymentDetailsModal({ payment, tenantName, pendingCash =
               )
             ) : <span />}
             <div className="flex gap-2">
-              <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-xl hover:border-slate-300">Close</button>
-              <button type="submit" disabled={!dirty || save.busy || (needsApproval && reason.trim().length < 3)} className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl disabled:opacity-50">
+              <button type="button" onClick={onClose} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md border border-slate-200 bg-white font-medium text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50">Close</button>
+              <button type="submit" disabled={!dirty || save.busy || (needsApproval && reason.trim().length < 3)} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md bg-indigo-600 font-medium text-white shadow-xs transition-colors hover:bg-indigo-700 disabled:opacity-50">
                 {save.busy ? 'Saving…' : needsApproval ? 'Send for approval' : 'Save'}
               </button>
             </div>
@@ -178,7 +178,7 @@ export default function PaymentDetailsModal({ payment, tenantName, pendingCash =
           <FormError message={error} />
           {payment.notes && <p className="text-sm text-slate-600"><span className="text-slate-400">Notes:</span> {payment.notes}</p>}
           <div className="flex justify-end">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-xl hover:border-slate-300">Close</button>
+            <button type="button" onClick={onClose} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md border border-slate-200 bg-white font-medium text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50">Close</button>
           </div>
         </>
       )}

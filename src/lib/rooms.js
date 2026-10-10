@@ -23,7 +23,7 @@ export async function resolveRoom({ orgId, property, roomId, roomName, rent = 0,
 
   const occupied = await Tenant.countDocuments({ roomId: room._id, status: 'active', ...(excludeTenantId ? { _id: { $ne: excludeTenantId } } : {}) })
   if (occupied >= room.capacity) {
-    throw new ApiError(409, `Room ${room.name} is full (${occupied} of ${room.capacity} beds). Increase its capacity in Rooms & Beds or choose another room.`)
+    throw new ApiError(409, `Room ${room.name} is full (${occupied} of ${room.capacity} beds). Increase its beds on the Rooms page or choose another room.`)
   }
   return room
 }
