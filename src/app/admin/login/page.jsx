@@ -1,12 +1,13 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ShieldCheck, Smartphone, KeyRound } from 'lucide-react'
 import { adminApi } from '@/utils/adminApi'
-import FormError from '@/components/ui/FormError'
+import AuthShell, { AuthError } from '@/components/ui/AuthShell'
+import { button, field } from '@/components/ui/styles'
 
-const inputCls = 'w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-indigo-500'
-const codeCls = 'w-full text-center tracking-[0.5em] text-2xl font-semibold bg-white/5 border border-white/10 rounded-xl px-3 py-3 text-white focus:outline-none focus:border-indigo-500'
+const inputCls = field.input
+const codeCls = 'w-full h-12 rounded-md border border-slate-200 bg-white px-3 text-center text-2xl font-semibold tracking-[0.5em] text-slate-900 shadow-xs focus:outline-none focus:border-indigo-500'
+const submitCls = `${button('primary', 'lg')} w-full`
 
 function goNext() {
   const next = new URLSearchParams(window.location.search).get('next')
@@ -72,82 +73,59 @@ export default function AdminLoginPage() {
     })
   }
 
+  const titles = {
+    credentials: ['PGBook staff sign-in', <>For the PGBook team only. PG owners sign in <Link href="/login" className="font-medium text-slate-900 underline-offset-4 hover:underline">here</Link>.</>],
+    totp: ['Two-factor authentication', 'Enter the 6-digit code from your authenticator app.'],
+    enroll: ['Set up two-factor authentication', '2FA is required for every PGBook admin.'],
+  }
+  const [title, subtitle] = titles[step]
+
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center px-5 py-12">
-      <div className="w-full max-w-md">
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <span className="text-white font-bold text-2xl" style={{ fontFamily: 'Space Grotesk' }}>PG<span className="text-indigo-400">Book</span></span>
-          <span className="text-[10px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-rose-500/90 text-white">ADMIN</span>
-        </div>
+    <AuthShell title={title} subtitle={subtitle} footer="Sign-ins and every admin action are recorded.">
+      {notice && step === 'credentials' && <p className="mb-5 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">{notice}</p>}
 
-        <div className="bg-slate-900 border border-white/10 rounded-2xl p-8">
-          {notice && step === 'credentials' && <p className="text-amber-300 text-sm bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2 mb-5">{notice}</p>}
+      {step === 'credentials' && (
+        <form onSubmit={submitCredentials} className="space-y-5">
+          <div>
+            <label htmlFor="a-email" className={field.label}>Work email</label>
+            <input id="a-email" type="email" required autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} className={inputCls} />
+          </div>
+          <div>
+            <label htmlFor="a-password" className={field.label}>Password</label>
+            <input id="a-password" type="password" required autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} className={inputCls} />
+          </div>
+          <AuthError message={error} />
+          <button type="submit" disabled={busy} className={submitCls}>{busy ? 'Checking…' : 'Continue'}</button>
+        </form>
+      )}
 
-          {step === 'credentials' && (
-            <form onSubmit={submitCredentials} className="space-y-4">
-              <div className="flex items-center gap-2 mb-2">
-                <KeyRound size={18} className="text-indigo-400" />
-                <h1 className="text-lg font-bold text-white">Staff sign-in</h1>
-              </div>
-              <p className="text-slate-400 text-sm -mt-2 mb-4">For PGBook team members only. PG owners sign in <Link href="/login" className="text-indigo-400 hover:text-indigo-300">here</Link>.</p>
-              <div>
-                <label htmlFor="a-email" className="block text-slate-400 text-sm font-medium mb-1.5">Work email</label>
-                <input id="a-email" type="email" required autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} className={inputCls} />
-              </div>
-              <div>
-                <label htmlFor="a-password" className="block text-slate-400 text-sm font-medium mb-1.5">Password</label>
-                <input id="a-password" type="password" required autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} className={inputCls} />
-              </div>
-              {error && <FormError message={error} />}
-              <button type="submit" disabled={busy} className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white font-semibold py-3 rounded-xl text-sm">
-                {busy ? 'Checking…' : 'Continue'}
-              </button>
-            </form>
+      {step === 'totp' && (
+        <form onSubmit={submitCode} className="space-y-5">
+          <CodeInput value={code} onChange={setCode} />
+          <AuthError message={error} />
+          <button type="submit" disabled={busy || code.length !== 6} className={submitCls}>{busy ? 'Verifying…' : 'Sign in'}</button>
+          <button type="button" onClick={() => { setStep('credentials'); setError('') }} className="text-sm text-slate-500 hover:text-slate-800">Start over</button>
+        </form>
+      )}
+
+      {step === 'enroll' && (
+        <form onSubmit={submitCode} className="space-y-5">
+          <p className="text-sm text-slate-600">Scan this QR code with Google Authenticator, Microsoft Authenticator, Authy or 1Password, then enter the 6-digit code it shows.</p>
+          {enrollment ? (
+            <div className="flex flex-col items-center gap-3 rounded-lg border border-slate-200 p-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={enrollment.qr} alt="QR code for your authenticator app" width={200} height={200} />
+              <p className="text-xs text-slate-500">Can&apos;t scan? Enter this key manually:</p>
+              <code className="select-all break-all rounded-md bg-slate-100 px-3 py-1.5 text-center font-mono text-sm tracking-wider text-slate-900">{enrollment.secret}</code>
+            </div>
+          ) : (
+            <p className="text-center text-sm text-slate-500">Preparing…</p>
           )}
-
-          {step === 'totp' && (
-            <form onSubmit={submitCode} className="space-y-5 text-center">
-              <ShieldCheck size={32} className="text-indigo-400 mx-auto" />
-              <div>
-                <h1 className="text-lg font-bold text-white">Two-factor authentication</h1>
-                <p className="text-slate-400 text-sm mt-1">Enter the 6-digit code from your authenticator app.</p>
-              </div>
-              <CodeInput value={code} onChange={setCode} />
-              {error && <div className="text-left"><FormError message={error} /></div>}
-              <button type="submit" disabled={busy || code.length !== 6} className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold py-3 rounded-xl text-sm">
-                {busy ? 'Verifying…' : 'Sign in'}
-              </button>
-              <button type="button" onClick={() => { setStep('credentials'); setError('') }} className="text-xs text-slate-500 hover:text-slate-300">Start over</button>
-            </form>
-          )}
-
-          {step === 'enroll' && (
-            <form onSubmit={submitCode} className="space-y-5">
-              <div className="flex items-center gap-2">
-                <Smartphone size={18} className="text-indigo-400" />
-                <h1 className="text-lg font-bold text-white">Set up two-factor authentication</h1>
-              </div>
-              <p className="text-slate-400 text-sm">2FA is required for every PGBook admin. Scan this QR code with Google Authenticator, Microsoft Authenticator, Authy or 1Password, then enter the 6-digit code it shows.</p>
-              {enrollment ? (
-                <div className="flex flex-col items-center gap-3">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={enrollment.qr} alt="QR code for your authenticator app" width={220} height={220} className="rounded-xl bg-white p-2" />
-                  <p className="text-xs text-slate-500 text-center">Can&apos;t scan? Enter this key manually:</p>
-                  <code className="text-sm text-indigo-300 bg-white/5 rounded-lg px-3 py-1.5 tracking-wider select-all break-all text-center">{enrollment.secret}</code>
-                </div>
-              ) : (
-                <p className="text-slate-500 text-sm text-center">Preparing…</p>
-              )}
-              <CodeInput value={code} onChange={setCode} />
-              {error && <FormError message={error} />}
-              <button type="submit" disabled={busy || code.length !== 6 || !enrollment} className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold py-3 rounded-xl text-sm">
-                {busy ? 'Verifying…' : 'Turn on 2FA and sign in'}
-              </button>
-            </form>
-          )}
-        </div>
-        <p className="text-center text-xs text-slate-600 mt-6">Sign-ins and every admin action are recorded.</p>
-      </div>
-    </div>
+          <CodeInput value={code} onChange={setCode} />
+          <AuthError message={error} />
+          <button type="submit" disabled={busy || code.length !== 6 || !enrollment} className={submitCls}>{busy ? 'Verifying…' : 'Turn on 2FA and sign in'}</button>
+        </form>
+      )}
+    </AuthShell>
   )
 }

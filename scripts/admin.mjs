@@ -7,7 +7,7 @@
 //   npm run admin -- reset-password --email=... (prints a new temporary password)
 //   npm run admin -- unlock --email=...         (clears a temporary lockout)
 //
-// After the first Super Admin exists, add teammates from the console (Admin Team),
+// After the first Super Admin exists, add teammates from the console (Admin team),
 // where every change needs a second Super Admin's approval.
 import crypto from 'node:crypto'
 import mongoose from 'mongoose'
@@ -72,7 +72,7 @@ try {
       console.log(`\n✓ Created ${role} ${name} <${email}>`)
       console.log(`  Temporary password: ${password}`)
       console.log('  Sign in at /admin/login — you will be asked to set up an authenticator app (required),')
-      console.log('  then change this password under My Account.\n')
+      console.log('  then change this password under My account.\n')
       break
     }
     case 'list': {

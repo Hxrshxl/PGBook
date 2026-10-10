@@ -8,7 +8,7 @@ import Pill from '@/components/admin/Pill'
 import { planState, relative } from '@/components/admin/format'
 import { formatDate } from '@/utils/helpers'
 
-const selectCls = 'border border-slate-200 bg-white rounded-xl px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-indigo-500'
+const selectCls = 'border border-slate-200 bg-white rounded-md px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-indigo-500'
 
 export default function OwnersPage() {
   const [q, setQ] = useState('')
@@ -47,9 +47,9 @@ export default function OwnersPage() {
   const filter = (setter) => e => { setter(e.target.value); setPage(1) }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+    <div className="px-4 py-6 sm:px-6 lg:px-8 lg:py-8 max-w-7xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Owners</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-slate-900">Owners</h1>
         <p className="text-slate-500 text-sm mt-1">PG owner accounts. You see account details and usage counts — not their tenants or money.</p>
       </div>
 
@@ -57,7 +57,7 @@ export default function OwnersPage() {
         <div className="relative flex-1 min-w-56">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search name, email or PG name" aria-label="Search owners"
-            className="w-full border border-slate-200 bg-white rounded-xl pl-9 pr-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-indigo-500" />
+            className="w-full border border-slate-200 bg-white rounded-md pl-9 pr-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-indigo-500" />
         </div>
         <select aria-label="Status" value={status} onChange={filter(setStatus)} className={selectCls}>
           <option value="">Any status</option>
@@ -87,11 +87,11 @@ export default function OwnersPage() {
 
       {error && <p className="text-rose-600 text-sm mb-4">{error}</p>}
 
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[860px]">
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-left text-xs uppercase tracking-wider text-slate-500">
+              <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
                 <th scope="col" className="px-4 py-3 font-medium">Owner</th>
                 <th scope="col" className="px-4 py-3 font-medium">Plan</th>
                 <th scope="col" className="px-4 py-3 font-medium">Status</th>

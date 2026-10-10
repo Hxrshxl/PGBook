@@ -9,11 +9,14 @@ import EmptyState from '@/components/ui/EmptyState'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import AddComplaintModal from '@/components/complaints/AddComplaintModal'
 import ComplaintCard from '@/components/complaints/ComplaintCard'
+import PageHeader from '@/components/ui/PageHeader'
+import Tabs from '@/components/ui/Tabs'
+import { btn, page } from '@/components/ui/styles'
 
 const TABS = [
   { key: 'all',         label: 'All'         },
   { key: 'open',        label: 'Open'        },
-  { key: 'in-progress', label: 'In Progress' },
+  { key: 'in-progress', label: 'In progress' },
   { key: 'resolved',    label: 'Resolved'    },
 ]
 
@@ -60,44 +63,28 @@ export default function ComplaintsPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Complaint Portal</h1>
-          <p className="text-slate-500 text-sm mt-1">Track and resolve maintenance issues from tenants</p>
-        </div>
-        <button onClick={() => setAddOpen(true)} className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm px-4 py-2.5 rounded-xl transition-colors shrink-0">
-          <Plus size={16} /> Add Complaint
-        </button>
-      </div>
+    <div className={`${page} mx-auto max-w-4xl`}>
+      <PageHeader
+        title="Complaints"
+        description="Maintenance issues from tenants, most urgent first."
+        actions={<button onClick={() => setAddOpen(true)} className={btn.primary}><Plus size={15} /> Log complaint</button>}
+      />
 
-      <div className="flex gap-1 bg-slate-100 rounded-xl p-1 mb-6 w-fit max-w-full overflow-x-auto">
-        {TABS.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            className={`px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${tab === t.key ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-            {t.label}
-            {counts[t.key] > 0 && (
-              <span className={`ml-1.5 text-xs font-semibold px-1.5 py-0.5 rounded-full ${tab === t.key ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-500'}`}>
-                {counts[t.key]}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      <Tabs className="mb-4" value={tab} onChange={setTab} tabs={TABS.map(t => ({ ...t, count: counts[t.key] }))} />
 
       {filtered.length === 0 ? (
         <EmptyState icon={MessageSquare}
           title={tab === 'all' ? 'No complaints yet' : `No ${tab === 'in-progress' ? 'in-progress' : tab} complaints`}
-          message={tab === 'all' ? 'Log a new complaint to track and resolve maintenance issues.' : 'All caught up in this category.'}
-          actionLabel={tab === 'all' ? 'Add Complaint' : undefined}
+          message={tab === 'all' ? 'Log a complaint to track and resolve maintenance issues.' : 'All caught up here.'}
+          actionLabel={tab === 'all' ? 'Log complaint' : undefined}
           onAction={tab === 'all' ? () => setAddOpen(true) : undefined} />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filtered.map(c => <ComplaintCard key={c.id} complaint={c} onUpdate={handleUpdate} onDelete={setDeleting} />)}
-        </div>
+        <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
+          {filtered.map(c => <li key={c.id}><ComplaintCard complaint={c} onUpdate={handleUpdate} onDelete={setDeleting} /></li>)}
+        </ul>
       )}
 
-      <Modal isOpen={addOpen} onClose={() => setAddOpen(false)} title="Log New Complaint" maxWidth="max-w-md">
+      <Modal isOpen={addOpen} onClose={() => setAddOpen(false)} title="Log complaint" maxWidth="max-w-md">
         {activeTenants.length === 0 ? (
           <div className="py-6 text-center text-slate-500 text-sm">No active tenants. Add tenants before logging complaints.</div>
         ) : (

@@ -81,7 +81,7 @@ It prints a temporary password. Sign in at `/admin/login`, set up an authenticat
 
 | Screen | What it does |
 | --- | --- |
-| Command Center | Owner and trial KPIs, platform usage (₹ totals hidden until ≥ 10 owners contribute), needs-attention queue, system health, live activity |
+| Overview | Owner and trial KPIs, platform usage (₹ totals hidden until ≥ 10 owners contribute), needs-attention queue, system health, live activity |
 | Owners | Search and filter accounts. Detail page shows usage **counts** (never tenant names or amounts), activity (redacted), sign-ins. Actions: extend trial, sign out all sessions, suspend / reactivate — each needs a reason the owner can see |
 | Approvals | Maker-checker queue. Nobody can approve their own request; approving needs a fresh 2FA code |
 | Audit Log | Every sign-in, change and decision; filters; CSV export (needs 2FA, guarded against spreadsheet formula injection). Append-only |

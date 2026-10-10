@@ -34,7 +34,7 @@ export const POST = route(async ({ request, org, scope, actor, audit }) => {
   // Tell residents who use the app.
   const tenants = await Tenant.find({ userId: org._id, status: 'active', residentId: { $ne: null }, ...(ids.length ? { propertyId: { $in: ids } } : {}) }).select('residentId')
   for (const t of tenants) {
-    await notifyResident({ residentId: t.residentId, orgId: org._id, type: 'notice', title: `📢 ${notice.title}`, body: notice.body.slice(0, 200), link: '/t/home', key: `notice:${notice._id}:${t.residentId}` })
+    await notifyResident({ residentId: t.residentId, orgId: org._id, type: 'notice', title: `New notice: ${notice.title}`, body: notice.body.slice(0, 200), link: '/t/home', key: `notice:${notice._id}:${t.residentId}` })
   }
   return json(notice, 201)
 }, { permission: 'notices.manage' })

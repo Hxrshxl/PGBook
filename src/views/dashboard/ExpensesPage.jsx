@@ -1,6 +1,6 @@
 'use client'
 import { useMemo, useState } from 'react'
-import { Plus, Wallet, Pencil, Trash2, TrendingUp, TrendingDown } from 'lucide-react'
+import { Plus, Wallet } from 'lucide-react'
 import { useAppData } from '@/context/AppContext'
 import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/context/ToastContext'
@@ -12,11 +12,16 @@ import {
 import Modal from '@/components/ui/Modal'
 import MonthSelector from '@/components/ui/MonthSelector'
 import EmptyState from '@/components/ui/EmptyState'
+import PageHeader from '@/components/ui/PageHeader'
+import StatStrip from '@/components/ui/StatStrip'
+import Panel from '@/components/ui/Panel'
+import RowMenu from '@/components/ui/RowMenu'
+import { btn, page } from '@/components/ui/styles'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import FormError from '@/components/ui/FormError'
 
-const inputCls = 'w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors'
-const labelCls = 'block text-slate-700 text-sm font-medium mb-1.5'
+const inputCls = 'w-full border border-slate-200 rounded-md px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 transition-colors bg-white'
+const labelCls = 'block text-[13px] font-medium text-slate-700 mb-1.5'
 
 function ExpenseForm({ initialData, properties, defaultPropertyId, onSubmit, onCancel }) {
   const [form, setForm] = useState(() => ({
@@ -80,8 +85,8 @@ function ExpenseForm({ initialData, properties, defaultPropertyId, onSubmit, onC
       </div>
       <FormError message={error} />
       <div className="flex justify-end gap-3 pt-1">
-        <button type="button" onClick={onCancel} disabled={busy} className="px-5 py-2.5 text-sm font-medium text-slate-600 border border-slate-200 rounded-xl hover:border-slate-300 disabled:opacity-50">Cancel</button>
-        <button type="submit" disabled={busy} className="px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl disabled:opacity-60">
+        <button type="button" onClick={onCancel} disabled={busy} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md border border-slate-200 bg-white font-medium text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50">Cancel</button>
+        <button type="submit" disabled={busy} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md bg-indigo-600 font-medium text-white shadow-xs transition-colors hover:bg-indigo-700 disabled:opacity-50">
           {busy ? 'Saving…' : initialData ? 'Save changes' : 'Add expense'}
         </button>
       </div>
@@ -132,93 +137,78 @@ export default function ExpensesPage() {
     setDeleting(null)
   }
 
+  const menuFor = e => [
+    { label: 'Edit', onClick: () => setEditing(e) },
+    { label: 'Delete', onClick: () => setDeleting(e), danger: true },
+  ]
+
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Expenses</h1>
-          <p className="text-slate-500 text-sm mt-1">What it costs to run {currentProperty?.name ?? (properties.length > 1 ? 'your properties' : 'your PG')}, and what&apos;s left over</p>
-        </div>
-        <div className="flex items-center gap-3">
+    <div className={`${page} mx-auto max-w-6xl`}>
+      <PageHeader
+        title="Expenses"
+        description={`What it costs to run ${currentProperty?.name ?? (properties.length > 1 ? 'your properties' : 'your PG')}, and what is left over.`}
+        actions={<>
           <MonthSelector value={month} onChange={setMonth} />
-          {canManage && (
-            <button onClick={() => setAdding(true)} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm px-4 py-2.5 rounded-xl transition-colors shrink-0">
-              <Plus size={16} /> <span className="hidden sm:inline">Add Expense</span><span className="sm:hidden">Add</span>
-            </button>
-          )}
-        </div>
-      </div>
+          {canManage && <button onClick={() => setAdding(true)} className={btn.primary}><Plus size={15} /> Add expense</button>}
+        </>}
+      />
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Received</p>
-          <p className="text-2xl font-bold text-slate-900 mt-1">{formatCurrencyRounded(received)}</p>
-          <p className="text-xs text-slate-400 mt-1">Rent & charges received this month</p>
-        </div>
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Spent</p>
-          <p className="text-2xl font-bold text-slate-900 mt-1">{formatCurrencyRounded(spent)}</p>
-          <p className="text-xs text-slate-400 mt-1">{monthExpenses.length} expense{monthExpenses.length === 1 ? '' : 's'}</p>
-        </div>
-        <div className={`rounded-2xl border shadow-sm p-5 ${profit >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
-          <p className={`text-xs font-medium uppercase tracking-wide ${profit >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{profit >= 0 ? 'Profit' : 'Loss'}</p>
-          <p className={`text-2xl font-bold mt-1 flex items-center gap-2 ${profit >= 0 ? 'text-emerald-800' : 'text-red-800'}`}>
-            {profit >= 0 ? <TrendingUp size={20} /> : <TrendingDown size={20} />}{formatCurrencyRounded(Math.abs(profit))}
-          </p>
-          <p className={`text-xs mt-1 ${profit >= 0 ? 'text-emerald-700/70' : 'text-red-700/70'}`}>{received > 0 ? `${Math.round((profit / received) * 100)}% margin` : 'Nothing received yet'}</p>
-        </div>
-      </div>
+      <StatStrip className="mb-6" items={[
+        { label: 'Received', value: formatCurrencyRounded(received), sub: 'Rent and charges this month' },
+        { label: 'Spent', value: formatCurrencyRounded(spent), sub: `${monthExpenses.length} expense${monthExpenses.length === 1 ? '' : 's'}` },
+        { label: profit >= 0 ? 'Profit' : 'Loss', value: `${profit < 0 ? '−' : ''}${formatCurrencyRounded(Math.abs(profit))}`, tone: profit < 0 ? 'negative' : 'default', sub: received > 0 ? `${Math.round((profit / received) * 100)}% margin` : 'Nothing received yet' },
+      ]} />
 
-      {byCategory.length > 0 && (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 mb-6">
-          <h2 className="text-sm font-semibold text-slate-900 mb-4">Where the money went</h2>
-          <div className="space-y-2.5">
-            {byCategory.map(c => (
-              <button key={c.key} onClick={() => setCategory(category === c.key ? 'all' : c.key)} className="w-full text-left group" aria-pressed={category === c.key}>
-                <div className="flex items-center justify-between text-sm mb-1">
-                  <span className={`font-medium ${category === c.key ? 'text-indigo-700' : 'text-slate-700 group-hover:text-slate-900'}`}>{EXPENSE_CATEGORY_LABELS[c.key] ?? c.key}</span>
-                  <span className="text-slate-600 tabular-nums">{formatCurrency(c.amount)} <span className="text-slate-400 text-xs">({Math.round((c.amount / spent) * 100)}%)</span></span>
-                </div>
-                <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-                  <div className={`h-full rounded-full ${category === c.key ? 'bg-indigo-600' : 'bg-indigo-400'}`} style={{ width: `${Math.max(2, (c.amount / byCategory[0].amount) * 100)}%` }} />
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {list.length === 0 ? (
+      {monthExpenses.length === 0 ? (
         <EmptyState icon={Wallet}
-          title={monthExpenses.length ? 'No expenses in this category' : 'No expenses this month'}
+          title="No expenses this month"
           message={canManage ? 'Record salaries, groceries, repairs and bills to see your real profit.' : 'Expenses recorded for this month appear here.'}
-          actionLabel={canManage && !monthExpenses.length ? 'Add Expense' : undefined} onAction={() => setAdding(true)} />
+          actionLabel={canManage ? 'Add expense' : undefined} onAction={() => setAdding(true)} />
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 bg-slate-50">
-            <h2 className="text-sm font-semibold text-slate-900">{category === 'all' ? 'All expenses' : EXPENSE_CATEGORY_LABELS[category]}</h2>
-            {category !== 'all' && <button onClick={() => setCategory('all')} className="text-xs font-medium text-indigo-600 hover:text-indigo-500">Show all</button>}
-          </div>
-          <ul className="divide-y divide-slate-100">
-            {list.map(e => (
-              <li key={e.id} className="flex items-center gap-4 px-5 py-3.5">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-900 truncate">{e.paidTo || EXPENSE_CATEGORY_LABELS[e.category]}</p>
-                  <p className="text-xs text-slate-400 truncate">
-                    {[formatDate(e.date), EXPENSE_CATEGORY_LABELS[e.category], PAYMENT_METHOD_LABELS[e.method], showProperty && propertyById.get(e.propertyId)?.name, e.note].filter(Boolean).join(' · ')}
-                  </p>
-                  {e.recordedBy?.name && <p className="text-[11px] text-slate-400">Recorded by {e.recordedBy.name}</p>}
-                </div>
-                <span className="text-sm font-semibold text-slate-900 tabular-nums shrink-0">{formatCurrency(e.amount)}</span>
-                {canManage && (
-                  <div className="flex gap-1 shrink-0">
-                    <button onClick={() => setEditing(e)} aria-label="Edit expense" className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-50"><Pencil size={14} /></button>
-                    <button onClick={() => setDeleting(e)} aria-label="Delete expense" className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-slate-50"><Trash2 size={14} /></button>
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
+          <Panel
+            className="lg:col-span-2"
+            title={category === 'all' ? 'All expenses' : EXPENSE_CATEGORY_LABELS[category]}
+            count={list.length}
+            actions={category !== 'all' && <button onClick={() => setCategory('all')} className="text-xs font-medium text-slate-600 hover:text-slate-900">Show all</button>}
+          >
+            <ul className="divide-y divide-slate-100">
+              {list.map(e => (
+                <li key={e.id} className="flex items-center gap-4 px-5 py-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-slate-900">{e.paidTo || EXPENSE_CATEGORY_LABELS[e.category]}</p>
+                    <p className="truncate text-xs text-slate-500">
+                      {[formatDate(e.date), EXPENSE_CATEGORY_LABELS[e.category], PAYMENT_METHOD_LABELS[e.method], showProperty && propertyById.get(e.propertyId)?.name, e.note].filter(Boolean).join(' · ')}
+                    </p>
+                    {e.recordedBy?.name && <p className="text-[11px] text-slate-400">Recorded by {e.recordedBy.name}</p>}
                   </div>
-                )}
-              </li>
-            ))}
-          </ul>
+                  <span className="shrink-0 text-sm font-medium tabular-nums text-slate-900">{formatCurrency(e.amount)}</span>
+                  {canManage && <RowMenu items={menuFor(e)} label={`Actions for ${e.paidTo || 'expense'}`} />}
+                </li>
+              ))}
+            </ul>
+          </Panel>
+
+          <Panel title="By category" description="Select a category to filter the list." bodyClassName="p-2">
+            {byCategory.map(c => {
+              const active = category === c.key
+              return (
+                <button key={c.key} onClick={() => setCategory(active ? 'all' : c.key)} aria-pressed={active}
+                  className={`block w-full rounded-md px-3 py-2 text-left transition-colors ${active ? 'bg-indigo-50' : 'hover:bg-slate-50'}`}>
+                  <span className="flex items-center justify-between gap-3 text-sm">
+                    <span className={active ? 'font-medium text-indigo-700' : 'text-slate-700'}>{EXPENSE_CATEGORY_LABELS[c.key] ?? c.key}</span>
+                    <span className="tabular-nums text-slate-900">{formatCurrencyRounded(c.amount)}</span>
+                  </span>
+                  <span className="mt-1.5 flex items-center gap-2">
+                    <span className="h-1 flex-1 overflow-hidden rounded-full bg-slate-100">
+                      <span className={`block h-full rounded-full ${active ? 'bg-indigo-600' : 'bg-slate-400'}`} style={{ width: `${Math.max(2, (c.amount / byCategory[0].amount) * 100)}%` }} />
+                    </span>
+                    <span className="w-8 text-right text-[11px] tabular-nums text-slate-500">{Math.round((c.amount / spent) * 100)}%</span>
+                  </span>
+                </button>
+              )
+            })}
+          </Panel>
         </div>
       )}
 

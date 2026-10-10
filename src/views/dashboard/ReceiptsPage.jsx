@@ -10,6 +10,8 @@ import Badge from '@/components/ui/Badge'
 import Modal from '@/components/ui/Modal'
 import ReceiptTemplate from '@/components/receipts/ReceiptTemplate'
 import { printHtml } from '@/utils/print'
+import PageHeader from '@/components/ui/PageHeader'
+import { btn, button, page } from '@/components/ui/styles'
 
 // Unique per dues record: month + the end of the record's id.
 function buildReceiptNumber(payment) {
@@ -38,58 +40,52 @@ export default function ReceiptsPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Rent Receipts</h1>
-          <p className="text-slate-500 text-sm mt-1">Print or save receipts as PDF for tenants who have paid</p>
-        </div>
-        <MonthSelector value={month} onChange={setMonth} />
-      </div>
+    <div className={`${page} mx-auto max-w-4xl`}>
+      <PageHeader
+        title="Receipts"
+        description="Print or save a PDF receipt for any tenant who has paid."
+        actions={<MonthSelector value={month} onChange={setMonth} />}
+      />
 
       {rows.length === 0 ? (
         <EmptyState
           icon={FileText}
           title="No receipts for this month"
-          message="Receipts are available once a payment is recorded in Rent Tracker."
+          message="A receipt is available as soon as a payment is recorded on the Rent page."
         />
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{rows.length} receipt{rows.length > 1 ? 's' : ''} for {formatMonth(month)}</p>
-          </div>
-          <div className="divide-y divide-slate-50">
-            {rows.map(({ tenant, payment }) => (
-              <div key={payment.id} className="flex items-center justify-between gap-3 px-5 py-4 hover:bg-slate-50/60 transition-colors">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-bold shrink-0">
-                    {tenant.name[0]}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-medium text-slate-900 truncate">{tenant.name}</p>
-                    <p className="text-slate-400 text-xs truncate">Room {tenant.room} · {buildReceiptNumber(payment)}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4 shrink-0">
-                  <div className="text-right hidden sm:block">
-                    <p className="font-semibold text-slate-900">{formatCurrency(payment.amountPaid)}</p>
-                    <Badge status={payment.status} />
-                  </div>
-                  <button
-                    onClick={() => setPreviewingId(payment.id)}
-                    className="flex items-center gap-1.5 text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-3 py-1.5 rounded-lg transition-colors"
-                  >
-                    <Printer size={14} />
-                    View
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
+                <th scope="col" className="py-2.5 pl-5 pr-3 font-medium">Tenant</th>
+                <th scope="col" className="hidden px-3 py-2.5 font-medium sm:table-cell">Receipt no.</th>
+                <th scope="col" className="px-3 py-2.5 text-right font-medium">Paid</th>
+                <th scope="col" className="hidden px-3 py-2.5 font-medium sm:table-cell">Status</th>
+                <th scope="col" className="py-2.5 pl-3 pr-5"><span className="sr-only">Open</span></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {rows.map(({ tenant, payment }) => (
+                <tr key={payment.id} className="hover:bg-slate-50/70">
+                  <td className="py-2.5 pl-5 pr-3">
+                    <p className="font-medium text-slate-900">{tenant.name}</p>
+                    <p className="text-xs text-slate-500">Room {tenant.room}</p>
+                  </td>
+                  <td className="hidden px-3 py-2.5 font-mono text-xs text-slate-600 sm:table-cell">{buildReceiptNumber(payment)}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums text-slate-900">{formatCurrency(payment.amountPaid)}</td>
+                  <td className="hidden px-3 py-2.5 sm:table-cell"><Badge status={payment.status} /></td>
+                  <td className="py-2.5 pl-3 pr-5 text-right">
+                    <button onClick={() => setPreviewingId(payment.id)} className={button('secondary', 'xs')}><Printer size={13} /> View</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
-      <Modal isOpen={!!previewing} onClose={() => setPreviewingId(null)} title="Receipt Preview" maxWidth="max-w-2xl">
+      <Modal isOpen={!!previewing} onClose={() => setPreviewingId(null)} title="Receipt" description={previewing ? `${previewing.tenant.name} · ${formatMonth(month)}` : undefined} maxWidth="max-w-2xl">
         {previewing && (
           <div>
             <div ref={printRef} className="overflow-x-auto">
@@ -101,13 +97,13 @@ export default function ReceiptsPage() {
               />
             </div>
             {!settingsFor(previewing.payment).pgName && (
-              <p className="text-amber-700 text-xs bg-amber-50 rounded-lg px-3 py-2 mt-4">Tip: add your PG name, address and phone in Settings so they appear on receipts.</p>
+              <p className="mt-4 text-xs text-slate-500">Add your PG name, address and phone in Settings so they appear on receipts.</p>
             )}
             <div className="flex justify-end gap-3 mt-5 pt-4 border-t border-slate-100">
-              <button onClick={() => setPreviewingId(null)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-xl hover:border-slate-300 transition-colors">
+              <button onClick={() => setPreviewingId(null)} className={btn.secondary}>
                 Close
               </button>
-              <button onClick={doPrint} className="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition-colors">
+              <button onClick={doPrint} className={btn.primary}>
                 <Printer size={15} />
                 Print / Save PDF
               </button>

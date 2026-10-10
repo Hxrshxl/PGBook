@@ -8,9 +8,9 @@ import { formatCurrency, formatDate } from '@/utils/helpers'
 
 function Kpi({ label, value, sub }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-4">
+    <div className="bg-white rounded-xl border border-slate-200 p-4">
       <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</p>
-      <p className="text-2xl font-bold text-slate-900 mt-1">{value}</p>
+      <p className="text-xl font-semibold tracking-tight text-slate-900 mt-1">{value}</p>
       {sub && <p className="text-xs text-slate-400 mt-0.5">{sub}</p>}
     </div>
   )
@@ -18,7 +18,7 @@ function Kpi({ label, value, sub }) {
 
 function OwnerList({ title, rows, date, dateLabel, empty }) {
   return (
-    <section className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+    <section className="bg-white rounded-xl border border-slate-200 overflow-hidden">
       <h2 className="font-semibold text-slate-900 text-sm px-4 py-3 border-b border-slate-100">{title} <span className="text-slate-400 font-normal">({rows.length})</span></h2>
       <ul className="divide-y divide-slate-100">
         {rows.map(r => (
@@ -43,9 +43,9 @@ export default function RevenuePage() {
   if (!data) return <div className="flex justify-center py-24">{error ? <p className="text-rose-600 text-sm">{error}</p> : <Spinner size={26} />}</div>
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-6">
+    <div className="px-4 py-6 sm:px-6 lg:px-8 lg:py-8 max-w-6xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Revenue</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-slate-900">Revenue</h1>
         <p className="text-slate-500 text-sm mt-1">PGBook subscriptions (owners&apos; rent collections are never shown here)</p>
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -56,7 +56,7 @@ export default function RevenuePage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <section className="bg-white rounded-2xl border border-slate-200 p-5">
+        <section className="bg-white rounded-xl border border-slate-200 p-5">
           <h2 className="font-semibold text-slate-900 text-sm mb-3">Plan mix</h2>
           <table className="w-full text-sm">
             <thead><tr className="text-left text-xs text-slate-500 uppercase"><th className="py-1.5">Plan</th><th className="text-right">Paying owners</th><th className="text-right">MRR</th></tr></thead>
@@ -65,7 +65,7 @@ export default function RevenuePage() {
             </tbody>
           </table>
         </section>
-        <section className="bg-white rounded-2xl border border-slate-200 p-5">
+        <section className="bg-white rounded-xl border border-slate-200 p-5">
           <h2 className="font-semibold text-slate-900 text-sm mb-3">Accounts by status</h2>
           <div className="flex flex-wrap gap-2">
             {data.byStatus.map(s => <span key={s.status} className="text-sm"><Pill tone={['unpaid', 'ended', 'trial_expired'].includes(s.status) ? 'suspended' : s.status === 'past_due' ? 'expired' : s.status === 'trialing' ? 'trial' : 'active'}>{s.label}</Pill> <span className="text-slate-600 tabular-nums">{s.count}</span></span>)}
@@ -82,7 +82,7 @@ export default function RevenuePage() {
         </div>
       )}
 
-      <section className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+      <section className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <h2 className="font-semibold text-slate-900 text-sm px-4 py-3 border-b border-slate-100">Recent invoices</h2>
         <ul className="divide-y divide-slate-100">
           {data.invoices.map(i => (

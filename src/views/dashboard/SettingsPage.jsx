@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { Building, Plus, Archive, MapPin } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { useAppData } from '@/context/AppContext'
 import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/context/ToastContext'
@@ -8,6 +8,10 @@ import { useAsyncAction } from '@/hooks/useAsyncAction'
 import FormError from '@/components/ui/FormError'
 import Modal from '@/components/ui/Modal'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import Badge from '@/components/ui/Badge'
+import PageHeader from '@/components/ui/PageHeader'
+import RowMenu from '@/components/ui/RowMenu'
+import { btn, button, field, page } from '@/components/ui/styles'
 import { PLANS } from '@/lib/plans'
 import { formatCurrency, formatDate } from '@/utils/helpers'
 
@@ -20,7 +24,7 @@ const FIELD_GROUPS = [
       { key: 'city',    label: 'City',     placeholder: 'Bengaluru', maxLength: 60, half: true },
       { key: 'phone',   label: 'Phone',    placeholder: '9876543210', type: 'tel', maxLength: 20, half: true },
       { key: 'totalBeds', label: 'Total beds', placeholder: '24', type: 'number', min: 0, max: 10000, half: true,
-        help: 'Only used until you set up rooms in Rooms & Beds.' },
+        help: 'Only used until you set up rooms on the Rooms page.' },
     ],
   },
   {
@@ -44,10 +48,10 @@ const FIELDS = FIELD_GROUPS.flatMap(g => g.fields)
 const NUMERIC = new Set(['totalBeds', 'rentDueDay', 'noticePeriodDays'])
 const LATE_DEFAULTS = { enabled: false, graceDays: 3, type: 'flat', amount: 0, maxAmount: 0 }
 
-const inputCls = 'w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors disabled:bg-slate-50 disabled:text-slate-500'
-const labelCls = 'block text-slate-700 text-sm font-medium mb-1.5'
-const cardCls = 'bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden'
-const headCls = 'px-6 py-4 border-b border-slate-100 bg-slate-50'
+const inputCls = field.input
+const labelCls = field.label
+const cardCls = 'bg-white rounded-xl border border-slate-200 overflow-hidden'
+const headCls = 'px-5 py-3.5 border-b border-slate-200'
 
 function toForm(p) {
   const lateFee = { ...LATE_DEFAULTS, ...p.lateFee }
@@ -97,15 +101,15 @@ function PropertyForm({ property, editable }) {
     <form onSubmit={e => { e.preventDefault(); run() }} className="space-y-6">
       {FIELD_GROUPS.map(group => (
         <div key={group.title} className={cardCls}>
-          <div className={headCls}><h2 className="font-semibold text-slate-900 text-sm">{group.title}</h2></div>
-          <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className={headCls}><h2 className="text-sm font-semibold text-slate-900">{group.title}</h2></div>
+          <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
             {group.fields.map(f => (
               <div key={f.key} className={f.half ? '' : 'sm:col-span-2'}>
                 <label htmlFor={`s-${f.key}`} className={labelCls}>{f.label}{f.required && ' *'}</label>
                 <input id={`s-${f.key}`} type={f.type ?? 'text'} required={f.required} min={f.min} max={f.max} maxLength={f.maxLength} disabled={!editable}
                   value={form[f.key]} onChange={e => set(f.key, f.upper ? e.target.value.toUpperCase() : e.target.value)}
                   placeholder={f.placeholder} className={inputCls} />
-                {f.help && <p className="text-xs text-slate-400 mt-1">{f.help}</p>}
+                {f.help && <p className={field.help}>{f.help}</p>}
               </div>
             ))}
           </div>
@@ -114,13 +118,13 @@ function PropertyForm({ property, editable }) {
 
       <div className={cardCls}>
         <div className={`${headCls} flex items-center justify-between`}>
-          <h2 className="font-semibold text-slate-900 text-sm">Late fee</h2>
+          <h2 className="text-sm font-semibold text-slate-900">Late fee</h2>
           <label className="flex items-center gap-2 text-sm text-slate-700">
             <input type="checkbox" checked={form.lateFee.enabled} disabled={!editable} onChange={e => setLate('enabled', e.target.checked)} className="accent-indigo-600 w-4 h-4" />
             Charge late fees
           </label>
         </div>
-        <div className="p-6 space-y-4">
+        <div className="space-y-4 p-5">
           {form.lateFee.enabled && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div>
@@ -147,7 +151,7 @@ function PropertyForm({ property, editable }) {
             </div>
           )}
           <p className="text-sm text-slate-600">{lateFeeExample(form.lateFee)}</p>
-          <p className="text-xs text-slate-400">Late fees are added when you press “Apply late fees” in the Rent Tracker. They show separately on the dues and receipt, and can be waived per tenant.</p>
+          <p className="text-xs text-slate-500">Late fees are added when you press “Apply late fees” on the Rent page. They show separately on the dues and receipt, and can be waived per tenant.</p>
         </div>
       </div>
 
@@ -155,10 +159,10 @@ function PropertyForm({ property, editable }) {
         <>
           <FormError message={error} />
           <div className="flex items-center justify-end gap-3">
-            <button type="button" disabled={!dirty || busy} onClick={() => setForm(saved)} className="px-5 py-2.5 text-sm font-medium text-slate-600 border border-slate-200 rounded-xl hover:border-slate-300 transition-colors disabled:opacity-50">
+            <button type="button" disabled={!dirty || busy} onClick={() => setForm(saved)} className={btn.secondary}>
               Discard changes
             </button>
-            <button type="submit" disabled={!dirty || busy} className="px-6 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition-colors disabled:opacity-50">
+            <button type="submit" disabled={!dirty || busy} className={btn.primary}>
               {busy ? 'Saving…' : 'Save settings'}
             </button>
           </div>
@@ -185,11 +189,11 @@ function AddPropertyForm({ onSubmit, onCancel }) {
         <label htmlFor="np-city" className={labelCls}>City</label>
         <input id="np-city" maxLength={60} value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} className={inputCls} />
       </div>
-      <p className="text-xs text-slate-400">You can set its UPI ID, due day and late fee rules after adding it, then add rooms in Rooms & Beds.</p>
+      <p className="text-xs text-slate-500">You can set its UPI ID, due day and late fee rules after adding it, then add rooms on the Rooms page.</p>
       <FormError message={error} />
       <div className="flex justify-end gap-3">
-        <button type="button" onClick={onCancel} disabled={busy} className="px-5 py-2.5 text-sm font-medium text-slate-600 border border-slate-200 rounded-xl hover:border-slate-300 disabled:opacity-50">Cancel</button>
-        <button type="submit" disabled={busy} className="px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl disabled:opacity-60">{busy ? 'Adding…' : 'Add property'}</button>
+        <button type="button" onClick={onCancel} disabled={busy} className={btn.secondary}>Cancel</button>
+        <button type="submit" disabled={busy} className={btn.primary}>{busy ? 'Adding…' : 'Add property'}</button>
       </div>
     </form>
   )
@@ -225,36 +229,43 @@ function PropertiesSection() {
       {(properties.length > 1 || canManageProperties) && (
         <div className={cardCls}>
           <div className={`${headCls} flex items-center justify-between`}>
-            <h2 className="font-semibold text-slate-900 text-sm">Properties</h2>
+            <h2 className="text-sm font-semibold text-slate-900">Properties</h2>
             {canManageProperties && (
-              <button onClick={() => setAdding(true)} className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-500"><Plus size={14} /> Add property</button>
+              <button onClick={() => setAdding(true)} className={button('secondary', 'sm')}><Plus size={14} /> Add property</button>
             )}
           </div>
           <ul className="divide-y divide-slate-100">
-            {properties.map(p => (
-              <li key={p.id} className={`flex items-center gap-3 px-6 py-3.5 ${p.id === editing.id ? 'bg-indigo-50/40' : ''}`}>
-                <Building size={16} className="text-slate-400 shrink-0" />
-                <button onClick={() => setEditingId(p.id)} className="flex-1 min-w-0 text-left">
-                  <p className={`text-sm font-medium truncate ${p.id === editing.id ? 'text-indigo-700' : 'text-slate-900'}`}>{p.name}</p>
-                  <p className="text-xs text-slate-400 truncate">
-                    {p.city && <><MapPin size={10} className="inline -mt-0.5" /> {p.city} · </>}{p.rooms} rooms · {p.occupiedBeds}/{p.beds} beds occupied
-                  </p>
-                </button>
-                <button onClick={() => selectProperty(p.id)} className="text-xs font-medium text-slate-500 hover:text-indigo-600 hidden sm:block">View</button>
-                {canManageProperties && properties.length > 1 && (
-                  <button onClick={() => setArchiving(p)} aria-label={`Archive ${p.name}`} title="Archive property" className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-white"><Archive size={14} /></button>
-                )}
-              </li>
-            ))}
+            {properties.map(p => {
+              const current = p.id === editing.id
+              return (
+                <li key={p.id} className={`flex items-center gap-3 px-5 py-3 ${current ? 'bg-slate-50' : ''}`}>
+                  <button onClick={() => setEditingId(p.id)} className="min-w-0 flex-1 text-left">
+                    <span className="flex items-center gap-2">
+                      <span className="truncate text-sm font-medium text-slate-900">{p.name}</span>
+                      {current && properties.length > 1 && <Badge tone="blue">Editing</Badge>}
+                    </span>
+                    <span className="block truncate text-xs text-slate-500">
+                      {p.city && `${p.city} · `}{p.rooms} rooms · {p.occupiedBeds}/{p.beds} beds occupied
+                    </span>
+                  </button>
+                  <RowMenu label={`Actions for ${p.name}`} items={[
+                    { label: 'Edit settings', onClick: () => setEditingId(p.id) },
+                    { label: 'Switch to this property', onClick: () => selectProperty(p.id) },
+                    { divider: true },
+                    { label: 'Archive property', onClick: () => setArchiving(p), danger: true, hidden: !canManageProperties || properties.length < 2 },
+                  ]} />
+                </li>
+              )
+            })}
           </ul>
         </div>
       )}
 
-      {properties.length > 1 && <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide pt-2">{editing.name}</h2>}
+      {properties.length > 1 && <h2 className="pt-2 text-sm font-semibold text-slate-900">Settings for {editing.name}</h2>}
       <PropertyForm key={editing.id} property={editing} editable={editable} />
-      {!editable && <p className="text-xs text-slate-400 -mt-3">Only the owner can change property settings.</p>}
+      {!editable && <p className="-mt-3 text-xs text-slate-500">Only the owner can change property settings.</p>}
 
-      <Modal isOpen={adding} onClose={() => setAdding(false)} title="Add a property">
+      <Modal isOpen={adding} onClose={() => setAdding(false)} title="Add property">
         {adding && <AddPropertyForm onSubmit={handleAdd} onCancel={() => setAdding(false)} />}
       </Modal>
       <ConfirmDialog
@@ -282,8 +293,8 @@ function AccountForm() {
 
   return (
     <form onSubmit={e => { e.preventDefault(); run() }} className={cardCls}>
-      <div className={headCls}><h2 className="font-semibold text-slate-900 text-sm">Account</h2></div>
-      <div className="p-6 space-y-4">
+      <div className={headCls}><h2 className="text-sm font-semibold text-slate-900">Account</h2></div>
+      <div className="space-y-4 p-5">
         <div>
           <label htmlFor="acc-name" className={labelCls}>Your name</label>
           <input id="acc-name" required maxLength={100} value={name} onChange={e => setName(e.target.value)} className={inputCls} />
@@ -307,7 +318,7 @@ function AccountForm() {
         )}
         <FormError message={error} />
         <div className="flex justify-end">
-          <button type="submit" disabled={busy || !name.trim() || name.trim() === user?.name} className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl disabled:opacity-50">
+          <button type="submit" disabled={busy || !name.trim() || name.trim() === user?.name} className={btn.primary}>
             {busy ? 'Saving…' : 'Update name'}
           </button>
         </div>
@@ -336,8 +347,8 @@ function PasswordForm() {
 
   return (
     <form onSubmit={handleSubmit} className={cardCls}>
-      <div className={headCls}><h2 className="font-semibold text-slate-900 text-sm">Change password</h2></div>
-      <div className="p-6 space-y-4">
+      <div className={headCls}><h2 className="text-sm font-semibold text-slate-900">Change password</h2></div>
+      <div className="space-y-4 p-5">
         <div>
           <label htmlFor="pw-current" className={labelCls}>Current password</label>
           <input id="pw-current" type="password" autoComplete="current-password" required value={form.current} onChange={e => set('current', e.target.value)} className={inputCls} />
@@ -354,7 +365,7 @@ function PasswordForm() {
         </div>
         <FormError message={error} />
         <div className="flex justify-end">
-          <button type="submit" disabled={busy} className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl disabled:opacity-50">
+          <button type="submit" disabled={busy} className={btn.primary}>
             {busy ? 'Changing…' : 'Change password'}
           </button>
         </div>
@@ -366,11 +377,8 @@ function PasswordForm() {
 export default function SettingsPage() {
   const { can } = useAuth()
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-2xl mx-auto space-y-6">
-      <div className="mb-2">
-        <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
-        <p className="text-slate-500 text-sm mt-1">{can('settings.manage') ? 'Your properties, payment rules, and account' : 'Your account'}</p>
-      </div>
+    <div className={`${page} mx-auto max-w-2xl space-y-6`}>
+      <PageHeader title="Settings" description={can('settings.manage') ? 'Your properties, payment rules and account.' : 'Your account.'} />
       {can('settings.view') && <PropertiesSection />}
       <AccountForm />
       <PasswordForm />

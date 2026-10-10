@@ -1,5 +1,8 @@
+import { Inter } from 'next/font/google'
 import './globals.css'
 import Providers from '@/components/Providers'
+
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' })
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
 const DESCRIPTION = 'Manage tenants, collect rent, split utility bills, print receipts and send WhatsApp reminders — all from one dashboard built for PG owners in India.'
@@ -22,12 +25,12 @@ export const metadata = {
 }
 
 export const viewport = {
-  themeColor: '#4f46e5',
+  themeColor: '#ffffff',
 }
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" className={inter.variable}>
       <body>
         <Providers>
           {children}

@@ -2,31 +2,58 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  Building2, LayoutDashboard, Users, IndianRupee, Zap, BedDouble, Wallet, Inbox, UsersRound,
+  LayoutDashboard, Users, IndianRupee, Zap, BedDouble, Wallet, Inbox, UsersRound,
   FileText, Bell, MessageSquare, BarChart3, History, Settings, LogOut, X, ScrollText, CreditCard, Megaphone, PiggyBank,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useAppData } from '@/context/AppContext'
+import { initials } from '@/utils/helpers'
+import Logo from '@/components/ui/Logo'
 
-// Each item shows only if the signed-in role has the capability.
-const navItems = [
-  { label: 'Overview',         icon: LayoutDashboard, path: '/dashboard',            exact: true, capability: 'dashboard.view' },
-  { label: 'Approvals',        icon: Inbox,           path: '/dashboard/approvals',  capability: 'approvals.view', badge: true },
-  { label: 'Tenant Roster',    icon: Users,           path: '/dashboard/tenants',    capability: 'tenants.view' },
-  { label: 'Rooms & Beds',     icon: BedDouble,       path: '/dashboard/rooms',      capability: 'rooms.view' },
-  { label: 'Rent Tracker',     icon: IndianRupee,     path: '/dashboard/rent',       capability: 'rent.view' },
-  { label: 'Utility Splitter', icon: Zap,             path: '/dashboard/utilities',  capability: 'bills.view' },
-  { label: 'Expenses',         icon: Wallet,          path: '/dashboard/expenses',   capability: 'expenses.view' },
-  { label: 'Receipts',         icon: FileText,        path: '/dashboard/receipts',   capability: 'rent.view' },
-  { label: 'Reminders',        icon: Bell,            path: '/dashboard/reminders',  capability: 'rent.view' },
-  { label: 'Complaints',       icon: MessageSquare,   path: '/dashboard/complaints', capability: 'complaints.view' },
-  { label: 'Notices',          icon: Megaphone,       path: '/dashboard/notices',    capability: 'notices.view' },
-  { label: 'Deposits',         icon: PiggyBank,       path: '/dashboard/deposits',   capability: 'deposits.view' },
-  { label: 'Analytics',        icon: BarChart3,       path: '/dashboard/analytics',  capability: 'reports.view' },
-  { label: 'Tenant History',   icon: History,         path: '/dashboard/history',    capability: 'tenants.view' },
-  { label: 'Team',             icon: UsersRound,      path: '/dashboard/team',       capability: 'team.manage' },
-  { label: 'Activity',         icon: ScrollText,      path: '/dashboard/activity',   capability: 'activity.view' },
-  { label: 'Subscription',     icon: CreditCard,      path: '/dashboard/billing',    capability: 'billing.manage' },
+// Grouped by the job the owner is doing. Each item shows only if the role has the capability.
+const SECTIONS = [
+  {
+    items: [
+      { label: 'Overview',       icon: LayoutDashboard, path: '/dashboard', exact: true, capability: 'dashboard.view' },
+      { label: 'Approvals',      icon: Inbox,           path: '/dashboard/approvals',  capability: 'approvals.view', badge: true },
+    ],
+  },
+  {
+    label: 'Property',
+    items: [
+      { label: 'Tenants',        icon: Users,           path: '/dashboard/tenants',    capability: 'tenants.view' },
+      { label: 'Rooms',          icon: BedDouble,       path: '/dashboard/rooms',      capability: 'rooms.view' },
+      { label: 'Complaints',     icon: MessageSquare,   path: '/dashboard/complaints', capability: 'complaints.view' },
+      { label: 'Notices',        icon: Megaphone,       path: '/dashboard/notices',    capability: 'notices.view' },
+    ],
+  },
+  {
+    label: 'Money',
+    items: [
+      { label: 'Rent',           icon: IndianRupee,     path: '/dashboard/rent',       capability: 'rent.view' },
+      { label: 'Utility bills',  icon: Zap,             path: '/dashboard/utilities',  capability: 'bills.view' },
+      { label: 'Expenses',       icon: Wallet,          path: '/dashboard/expenses',   capability: 'expenses.view' },
+      { label: 'Deposits',       icon: PiggyBank,       path: '/dashboard/deposits',   capability: 'deposits.view' },
+      { label: 'Receipts',       icon: FileText,        path: '/dashboard/receipts',   capability: 'rent.view' },
+      { label: 'Reminders',      icon: Bell,            path: '/dashboard/reminders',  capability: 'rent.view' },
+    ],
+  },
+  {
+    label: 'Insights',
+    items: [
+      { label: 'Analytics',      icon: BarChart3,       path: '/dashboard/analytics',  capability: 'reports.view' },
+      { label: 'Tenant history', icon: History,         path: '/dashboard/history',    capability: 'tenants.view' },
+      { label: 'Activity',       icon: ScrollText,      path: '/dashboard/activity',   capability: 'activity.view' },
+    ],
+  },
+  {
+    label: 'Account',
+    items: [
+      { label: 'Team',           icon: UsersRound,      path: '/dashboard/team',       capability: 'team.manage' },
+      { label: 'Subscription',   icon: CreditCard,      path: '/dashboard/billing',    capability: 'billing.manage' },
+      { label: 'Settings',       icon: Settings,        path: '/dashboard/settings' },
+    ],
+  },
 ]
 
 export default function Sidebar({ onClose }) {
@@ -41,63 +68,66 @@ export default function Sidebar({ onClose }) {
     window.location.assign('/') // full reload clears all in-memory data
   }
 
-  function linkCls(path, exact) {
-    const active = exact ? pathname === path : pathname.startsWith(path)
-    return `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-      active ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-white/5'
-    }`
-  }
+  const isActive = (path, exact) => (exact ? pathname === path : pathname === path || pathname.startsWith(`${path}/`))
 
   return (
-    <aside className="flex flex-col h-full bg-[#0a0e1a] border-r border-white/5">
-      <div className="flex items-center justify-between px-5 h-16 shrink-0 border-b border-white/5">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
-            <Building2 size={16} className="text-white" />
-          </div>
-          <span style={{ fontFamily: 'Space Grotesk' }} className="text-white font-bold text-xl tracking-tight">
-            PG<span className="text-indigo-400">Book</span>
-          </span>
-        </div>
+    <aside className="flex h-full flex-col border-r border-slate-200 bg-slate-50">
+      <div className="flex h-14 shrink-0 items-center justify-between px-4">
+        <Link href="/dashboard" onClick={onClose} className="flex items-center"><Logo /></Link>
         {onClose && (
-          <button onClick={onClose} aria-label="Close menu" className="lg:hidden text-slate-500 hover:text-white p-1">
-            <X size={18} />
+          <button onClick={onClose} aria-label="Close menu" className="lg:hidden inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-200/60">
+            <X size={16} />
           </button>
         )}
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-        {navItems.filter(item => can(item.capability)).map(({ label, icon: Icon, path, exact, badge }) => (
-          <Link key={path} href={path} onClick={onClose} className={linkCls(path, exact)}>
-            <Icon size={17} />
-            <span className="flex-1">{label}</span>
-            {badge && waiting > 0 && (
-              <span className="min-w-5 h-5 px-1.5 rounded-full bg-rose-500 text-white text-xs font-bold flex items-center justify-center">{waiting}</span>
-            )}
-          </Link>
-        ))}
+      <nav className="flex-1 overflow-y-auto px-3 pb-4" aria-label="Main">
+        {SECTIONS.map((section, si) => {
+          const items = section.items.filter(item => !item.capability || can(item.capability))
+          if (!items.length) return null
+          return (
+            <div key={section.label ?? si} className={si ? 'mt-5' : 'mt-1'}>
+              {section.label && <p className="mb-1 px-2.5 text-[11px] font-medium uppercase tracking-wider text-slate-400">{section.label}</p>}
+              <ul className="space-y-px">
+                {items.map(({ label, icon: Icon, path, exact, badge }) => {
+                  const active = isActive(path, exact)
+                  return (
+                    <li key={path}>
+                      <Link
+                        href={path}
+                        onClick={onClose}
+                        aria-current={active ? 'page' : undefined}
+                        className={`group flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13px] transition-colors ${active ? 'bg-white text-slate-900 font-medium shadow-xs ring-1 ring-slate-200' : 'text-slate-600 hover:bg-slate-200/50 hover:text-slate-900'}`}
+                      >
+                        <Icon size={15} strokeWidth={1.75} className={active ? 'text-indigo-600' : 'text-slate-400 group-hover:text-slate-600'} />
+                        <span className="flex-1 truncate">{label}</span>
+                        {badge && waiting > 0 && (
+                          <span className="min-w-5 rounded-full bg-indigo-600 px-1.5 text-center text-[11px] font-medium leading-5 text-white tabular-nums">{waiting}</span>
+                        )}
+                      </Link>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          )
+        })}
       </nav>
 
-      <div className="px-3 pt-4 pb-4 border-t border-white/5 space-y-0.5">
-        <Link href="/dashboard/settings" onClick={onClose} className={linkCls('/dashboard/settings', false)}>
-          <Settings size={17} />
-          Settings
-        </Link>
-        {user && (
-          <div className="flex items-center gap-3 px-3 py-2.5 mt-2">
-            <div className="w-8 h-8 rounded-full bg-indigo-900 flex items-center justify-center text-indigo-300 text-xs font-bold shrink-0">
-              {user.name?.[0]?.toUpperCase() ?? 'U'}
+      {user && (
+        <div className="shrink-0 border-t border-slate-200 p-3">
+          <div className="flex items-center gap-2.5 rounded-md px-1.5 py-1">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-medium text-slate-700">{initials(user.name)}</span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[13px] font-medium text-slate-900">{user.name}</p>
+              <p className="truncate text-xs text-slate-500">{access?.role === 'owner' ? user.email : `${access?.roleLabel} · ${access?.org?.ownerName}`}</p>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-white text-xs font-semibold truncate">{user.name}</p>
-              <p className="text-slate-500 text-xs truncate">{access?.role === 'owner' ? user.email : `${access?.roleLabel} · ${access?.org?.ownerName}`}</p>
-            </div>
-            <button onClick={handleLogout} title="Sign out" aria-label="Sign out" className="text-slate-500 hover:text-red-400 transition-colors shrink-0">
+            <button onClick={handleLogout} title="Sign out" aria-label="Sign out" className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-slate-200/60 hover:text-slate-700">
               <LogOut size={15} />
             </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </aside>
   )
 }

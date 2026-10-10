@@ -1,7 +1,7 @@
 'use client'
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Check, CreditCard, Download, FileText, RefreshCw, ShieldAlert, FlaskConical } from 'lucide-react'
+import { Check, RefreshCw } from 'lucide-react'
 import { api, saveBlob } from '@/utils/api'
 import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/context/ToastContext'
@@ -12,21 +12,17 @@ import Modal from '@/components/ui/Modal'
 import FormError from '@/components/ui/FormError'
 import Spinner from '@/components/ui/Spinner'
 import ReasonDialog from '@/components/ui/ReasonDialog'
+import Badge from '@/components/ui/Badge'
+import PageHeader from '@/components/ui/PageHeader'
+import Panel from '@/components/ui/Panel'
+import { Segmented } from '@/components/ui/Tabs'
+import { btn, button, page } from '@/components/ui/styles'
 
-const inputCls = 'w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors'
-const labelCls = 'block text-slate-700 text-sm font-medium mb-1.5'
-const cardCls = 'bg-white rounded-2xl border border-slate-100 shadow-sm'
+const inputCls = 'w-full border border-slate-200 rounded-md px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 transition-colors bg-white'
+const labelCls = 'block text-[13px] font-medium text-slate-700 mb-1.5'
 const day = d => (d ? formatDate(String(new Date(d).toISOString()).slice(0, 10)) : '—')
 
-const TONES = {
-  trialing: 'bg-indigo-50 border-indigo-100 text-indigo-900',
-  active: 'bg-emerald-50 border-emerald-100 text-emerald-900',
-  cancelling: 'bg-amber-50 border-amber-100 text-amber-900',
-  past_due: 'bg-amber-50 border-amber-200 text-amber-900',
-  trial_expired: 'bg-red-50 border-red-200 text-red-900',
-  unpaid: 'bg-red-50 border-red-200 text-red-900',
-  ended: 'bg-red-50 border-red-200 text-red-900',
-}
+const STATUS_TONE = { trialing: 'blue', active: 'green', cancelling: 'amber', past_due: 'amber', trial_expired: 'red', unpaid: 'red', ended: 'red' }
 
 function statusText(state) {
   switch (state.status) {
@@ -45,15 +41,13 @@ function Meter({ label, used, limit }) {
   const pct = limit ? Math.min(100, Math.round((used / limit) * 100)) : 0
   return (
     <div>
-      <div className="flex justify-between text-sm mb-1">
-        <span className="text-slate-600">{label}</span>
-        <span className="font-medium text-slate-900 tabular-nums">{used}{limit === null ? '' : ` / ${limit}`}</span>
-      </div>
-      <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-        <div className={`h-full rounded-full ${limit === null ? 'bg-emerald-400' : pct >= 100 ? 'bg-red-500' : pct >= 80 ? 'bg-amber-500' : 'bg-indigo-500'}`} style={{ width: `${limit === null ? 15 : Math.max(2, pct)}%` }} />
-      </div>
-      {limit === null && <p className="text-[11px] text-slate-400 mt-0.5">Unlimited</p>}
-      {limit === 0 && <p className="text-[11px] text-slate-400 mt-0.5">Not included in this plan</p>}
+      <p className="text-[13px] text-slate-500">{label}</p>
+      <p className="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">{used}<span className="text-sm font-normal text-slate-400">{limit === null ? ' · unlimited' : limit === 0 ? ' · not included' : ` of ${limit}`}</span></p>
+      {limit > 0 && (
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+          <div className={`h-full rounded-full ${pct >= 100 ? 'bg-red-500' : pct >= 80 ? 'bg-amber-500' : 'bg-indigo-500'}`} style={{ width: `${Math.max(2, pct)}%` }} />
+        </div>
+      )}
     </div>
   )
 }
@@ -98,7 +92,7 @@ function DetailsForm({ details, onSaved }) {
       </div>
       <FormError message={error} />
       <div className="flex justify-end">
-        <button type="submit" disabled={!dirty || busy} className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl disabled:opacity-50">{busy ? 'Saving…' : 'Save details'}</button>
+        <button type="submit" disabled={!dirty || busy} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md bg-indigo-600 font-medium text-white shadow-xs transition-colors hover:bg-indigo-700 disabled:opacity-50">{busy ? 'Saving…' : 'Save details'}</button>
       </div>
     </form>
   )
@@ -125,8 +119,8 @@ function ExportDialog({ open, onClose }) {
         </div>
         <FormError message={error} />
         <div className="flex justify-end gap-3">
-          <button type="button" onClick={close} disabled={busy} className="px-4 py-2.5 text-sm font-medium text-slate-600 border border-slate-200 rounded-xl hover:border-slate-300 disabled:opacity-50">Cancel</button>
-          <button type="submit" disabled={busy || !password} className="px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl disabled:opacity-50">{busy ? 'Preparing…' : 'Download ZIP'}</button>
+          <button type="button" onClick={close} disabled={busy} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md border border-slate-200 bg-white font-medium text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50">Cancel</button>
+          <button type="submit" disabled={busy || !password} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md bg-indigo-600 font-medium text-white shadow-xs transition-colors hover:bg-indigo-700 disabled:opacity-50">{busy ? 'Preparing…' : 'Download ZIP'}</button>
         </div>
       </form>
     </Modal>
@@ -180,134 +174,130 @@ export default function BillingPage() {
   const canCancel = ['active', 'past_due'].includes(state.status) && subscription.hasSubscription && subscription.provider !== 'manual'
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Subscription</h1>
-        <p className="text-slate-500 text-sm mt-1">Your PGBook plan, usage, invoices and data export</p>
-      </div>
+    <div className={`${page} mx-auto max-w-4xl space-y-6`}>
+      <PageHeader title="Subscription" description="Your PGBook plan, usage, invoices and data export." />
 
-      <div className={`rounded-2xl border px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3 ${TONES[state.status] ?? TONES.active}`}>
+      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 sm:flex-row sm:items-center">
         <div className="flex-1">
-          <p className="text-xs font-semibold uppercase tracking-wide opacity-70">{state.statusLabel}</p>
-          <p className="text-sm mt-0.5">{statusText(state)}</p>
-          {state.readOnly && state.retentionUntil && <p className="text-xs mt-1 opacity-80">Your data is kept until {day(state.retentionUntil)}.</p>}
+          <Badge tone={STATUS_TONE[state.status] ?? 'gray'}>{state.statusLabel}</Badge>
+          <p className="mt-2 text-sm text-slate-700">{statusText(state)}</p>
+          {state.readOnly && state.retentionUntil && <p className="mt-1 text-xs text-slate-500">Your data is kept until {day(state.retentionUntil)}.</p>}
+          {subscription.pending && (
+            <p className="mt-1 text-xs text-slate-500">A checkout for {plans.find(p => p.id === subscription.pending.plan)?.label} ({subscription.pending.interval}) was started {day(subscription.pending.createdAt)}. Your plan changes as soon as the payment goes through.</p>
+          )}
         </div>
         {(subscription.pending || state.status === 'past_due') && provider === 'razorpay' && (
-          <button onClick={() => sync.run()} disabled={sync.busy} className="flex items-center gap-1.5 text-sm font-semibold px-3 py-2 rounded-xl bg-white/70 hover:bg-white border border-current/10 shrink-0 disabled:opacity-60">
-            <RefreshCw size={14} className={sync.busy ? 'animate-spin' : ''} /> I&apos;ve paid — refresh
+          <button onClick={() => sync.run()} disabled={sync.busy} className={btn.secondary}>
+            <RefreshCw size={14} className={sync.busy ? 'animate-spin' : ''} /> I&apos;ve paid, refresh
           </button>
         )}
       </div>
-      {subscription.pending && (
-        <p className="text-sm text-slate-600 -mt-3">A checkout for {plans.find(p => p.id === subscription.pending.plan)?.label} ({subscription.pending.interval}) was started {day(subscription.pending.createdAt)}. Your plan changes as soon as the payment goes through.</p>
-      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className={`${cardCls} p-5 space-y-4`}>
-          <h2 className="text-sm font-semibold text-slate-900">Usage</h2>
-          <Meter label="Active tenants" used={usage.tenants} limit={limits.tenants} />
-          <Meter label="Properties" used={usage.properties} limit={limits.properties} />
-          <Meter label="Staff logins" used={usage.staff} limit={limits.staff} />
-          <p className="text-xs text-slate-400">Recording payments, receipts and exports never count against a limit.</p>
-        </div>
+      <Panel title="Usage" description="Recording payments, receipts and exports never count against a limit." bodyClassName="grid grid-cols-1 gap-5 px-5 py-4 sm:grid-cols-3">
+        <Meter label="Active tenants" used={usage.tenants} limit={limits.tenants} />
+        <Meter label="Properties" used={usage.properties} limit={limits.properties} />
+        <Meter label="Staff logins" used={usage.staff} limit={limits.staff} />
+      </Panel>
 
-        <div className={`${cardCls} p-5 lg:col-span-2`}>
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <h2 className="text-sm font-semibold text-slate-900">{current ? 'Change plan' : 'Choose a plan'}</h2>
-            <div className="flex gap-1 bg-slate-100 p-1 rounded-xl" role="group" aria-label="Billing period">
-              {['monthly', 'yearly'].map(i => (
-                <button key={i} onClick={() => setPeriod(i)} aria-pressed={period === i}
-                  className={`px-3 py-1 rounded-lg text-xs font-semibold capitalize ${period === i ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>
-                  {i}{i === 'yearly' && <span className="ml-1 text-emerald-600">−20%</span>}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {plans.map(p => {
-              const isCurrent = current === p.id && (state.interval ?? 'monthly') === period
-              const perMonth = period === 'yearly' ? p.yearlyMonthlyPrice : p.monthlyPrice
-              return (
-                <div key={p.id} className={`rounded-xl border p-4 flex flex-col ${isCurrent ? 'border-indigo-500 ring-1 ring-indigo-500' : 'border-slate-200'}`}>
+      <Panel
+        title={current ? 'Change plan' : 'Choose a plan'}
+        actions={<Segmented label="Billing period" value={period} onChange={setPeriod} options={[{ key: 'monthly', label: 'Monthly' }, { key: 'yearly', label: 'Yearly · save 20%' }]} />}
+        bodyClassName="p-5"
+      >
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {plans.map(p => {
+            const isCurrent = current === p.id && (state.interval ?? 'monthly') === period
+            const perMonth = period === 'yearly' ? p.yearlyMonthlyPrice : p.monthlyPrice
+            return (
+              <div key={p.id} className={`flex flex-col rounded-lg border p-4 ${isCurrent ? 'border-indigo-600 ring-1 ring-indigo-600' : 'border-slate-200'}`}>
+                <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-slate-900">{p.label}</p>
-                  <p className="mt-1"><span className="text-2xl font-bold text-slate-900">₹{perMonth}</span><span className="text-xs text-slate-400">/month</span></p>
-                  <p className="text-[11px] text-slate-400">{period === 'yearly' ? `₹${(perMonth * 12).toLocaleString('en-IN')} billed yearly` : 'billed monthly'} · GST incl.</p>
-                  <p className="text-xs text-slate-600 mt-2 flex-1">{p.summary}</p>
-                  {p.blocker && !isCurrent && <p className="text-[11px] text-amber-700 mt-2">{p.blocker}</p>}
-                  <button
-                    onClick={() => subscribe.run(p.id)}
-                    disabled={isCurrent || !!p.blocker || subscribe.busy || !provider || (state.status === 'cancelling' && current === p.id)}
-                    className={`mt-3 w-full text-sm font-semibold py-2 rounded-lg transition-colors disabled:cursor-not-allowed ${isCurrent ? 'bg-indigo-50 text-indigo-700' : 'bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-40'}`}
-                  >
-                    {isCurrent ? <span className="flex items-center justify-center gap-1"><Check size={14} /> Current plan</span> : current ? 'Switch' : 'Subscribe'}
-                  </button>
+                  {isCurrent && <Badge tone="blue">Current</Badge>}
                 </div>
-              )
-            })}
-          </div>
-          <FormError message={subscribe.error} />
-          {!provider && <p className="text-xs text-amber-700 mt-3">Online payments are not set up on this server yet (Razorpay keys missing). Contact PGBook support to subscribe.</p>}
-          {current && <p className="text-xs text-slate-400 mt-3">Switching starts the new plan as soon as its first payment succeeds; the old plan stops then (the unused part is not refunded).</p>}
+                <p className="mt-2"><span className="text-2xl font-semibold tracking-tight tabular-nums text-slate-900">₹{perMonth}</span><span className="text-sm text-slate-500"> / month</span></p>
+                <p className="text-xs text-slate-500">{period === 'yearly' ? `₹${(perMonth * 12).toLocaleString('en-IN')} billed yearly` : 'Billed monthly'} · GST included</p>
+                <p className="mt-3 flex-1 text-[13px] leading-relaxed text-slate-600">{p.summary}</p>
+                {p.blocker && !isCurrent && <p className="mt-2 text-xs text-amber-700">{p.blocker}</p>}
+                <button
+                  onClick={() => subscribe.run(p.id)}
+                  disabled={isCurrent || !!p.blocker || subscribe.busy || !provider || (state.status === 'cancelling' && current === p.id)}
+                  className={`mt-4 w-full ${isCurrent || p.blocker ? button('secondary') : button('primary')}`}
+                >
+                  {isCurrent ? <><Check size={14} /> Current plan</> : current ? `Switch to ${p.label}` : `Choose ${p.label}`}
+                </button>
+              </div>
+            )
+          })}
         </div>
-      </div>
+        <FormError message={subscribe.error} />
+        {!provider && <p className="mt-3 text-xs text-amber-700">Online payments are not set up on this server yet (Razorpay keys missing). Contact PGBook support to subscribe.</p>}
+        {current && <p className="mt-3 text-xs text-slate-500">Switching starts the new plan as soon as its first payment succeeds; the old plan stops then. The unused part is not refunded.</p>}
+      </Panel>
 
       {provider === 'mock' && (
-        <div className="rounded-2xl border border-dashed border-violet-300 bg-violet-50/50 p-4">
-          <p className="text-sm font-semibold text-violet-900 flex items-center gap-2"><FlaskConical size={15} /> Test mode (local development)</p>
-          <p className="text-xs text-violet-800 mt-1">No real payments are taken. Simulate what Razorpay would report:</p>
-          <div className="flex flex-wrap gap-2 mt-3">
+        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-5 py-4">
+          <div className="flex items-center gap-2"><Badge tone="amber">Test mode</Badge><p className="text-sm font-medium text-slate-900">Local development</p></div>
+          <p className="mt-1.5 text-xs text-slate-600">No real payments are taken. Simulate what Razorpay would report:</p>
+          <div className="mt-3 flex flex-wrap gap-2">
             {[['renew', 'Renewal succeeds'], ['renewal_failed', 'Renewal fails'], ['halt', 'All retries fail']].map(([outcome, label]) => (
-              <button key={outcome} onClick={() => mock.run(outcome)} disabled={mock.busy || subscription.provider !== 'mock'} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-violet-200 text-violet-800 hover:border-violet-400 disabled:opacity-40">{label}</button>
+              <button key={outcome} onClick={() => mock.run(outcome)} disabled={mock.busy || subscription.provider !== 'mock'} className={button('secondary', 'sm')}>{label}</button>
             ))}
           </div>
           <FormError message={mock.error} />
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className={`${cardCls} overflow-hidden`}>
-          <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50 flex items-center gap-2"><FileText size={15} className="text-slate-500" /><h2 className="text-sm font-semibold text-slate-900">Invoices</h2></div>
-          {invoices.length === 0 ? (
-            <p className="text-sm text-slate-400 px-5 py-8 text-center">No invoices yet. They appear here after each payment.</p>
-          ) : (
-            <ul className="divide-y divide-slate-100">
+      <Panel title="Invoices">
+        {invoices.length === 0 ? (
+          <p className="px-5 py-8 text-center text-sm text-slate-500">No invoices yet. They appear here after each payment.</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
+                <th scope="col" className="py-2.5 pl-5 pr-3 font-medium">Invoice</th>
+                <th scope="col" className="px-3 py-2.5 font-medium">Date</th>
+                <th scope="col" className="hidden px-3 py-2.5 font-medium sm:table-cell">Plan</th>
+                <th scope="col" className="px-3 py-2.5 text-right font-medium">Amount</th>
+                <th scope="col" className="py-2.5 pl-3 pr-5"><span className="sr-only">Open</span></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
               {invoices.map(i => (
-                <li key={i.id} className="flex items-center gap-3 px-5 py-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-900">{i.number}</p>
-                    <p className="text-xs text-slate-400">{day(i.issuedAt)} · {plans.find(p => p.id === i.plan)?.label ?? i.plan} ({i.interval})</p>
-                  </div>
-                  <span className="text-sm font-semibold text-slate-900 tabular-nums">{formatCurrency(i.total)}</span>
-                  <Link href={`/dashboard/billing/invoices/${i.id}`} className="text-xs font-semibold text-indigo-600 hover:text-indigo-500">View</Link>
-                </li>
+                <tr key={i.id} className="hover:bg-slate-50/70">
+                  <td className="py-2.5 pl-5 pr-3 font-medium text-slate-900">{i.number}</td>
+                  <td className="whitespace-nowrap px-3 py-2.5 text-slate-600">{day(i.issuedAt)}</td>
+                  <td className="hidden px-3 py-2.5 text-slate-600 sm:table-cell">{plans.find(p => p.id === i.plan)?.label ?? i.plan}, {i.interval}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums text-slate-900">{formatCurrency(i.total)}</td>
+                  <td className="py-2.5 pl-3 pr-5 text-right"><Link href={`/dashboard/billing/invoices/${i.id}`} className="text-[13px] font-medium text-slate-700 hover:text-slate-900 hover:underline">View</Link></td>
+                </tr>
               ))}
-            </ul>
-          )}
-        </div>
+            </tbody>
+          </table>
+        )}
+      </Panel>
 
-        <div className={`${cardCls} p-5`}>
-          <div className="flex items-center gap-2 mb-4"><CreditCard size={15} className="text-slate-500" /><h2 className="text-sm font-semibold text-slate-900">Billing details</h2></div>
-          <DetailsForm key={JSON.stringify(data.details)} details={data.details} onSaved={setData} />
-        </div>
-      </div>
+      <Panel title="Billing details" description="Shown on your GST invoices." bodyClassName="p-5">
+        <DetailsForm key={JSON.stringify(data.details)} details={data.details} onSaved={setData} />
+      </Panel>
 
-      <div className={`${cardCls} p-5 flex flex-col sm:flex-row sm:items-center gap-4`}>
-        <div className="flex-1">
-          <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2"><Download size={15} className="text-slate-500" /> Export all data</h2>
-          <p className="text-xs text-slate-500 mt-1">Download everything as spreadsheets — works even when the account is read-only.</p>
-        </div>
-        <button onClick={() => setExporting(true)} className="px-4 py-2 text-sm font-semibold text-slate-700 border border-slate-200 hover:border-slate-300 rounded-xl">Export…</button>
-      </div>
-
-      {canCancel && (
-        <div className={`${cardCls} p-5 flex flex-col sm:flex-row sm:items-center gap-4`}>
+      <Panel bodyClassName="divide-y divide-slate-100">
+        <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center">
           <div className="flex-1">
-            <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2"><ShieldAlert size={15} className="text-slate-500" /> Cancel subscription</h2>
-            <p className="text-xs text-slate-500 mt-1">You keep full access until {day(state.currentPeriodEnd)}. After that the account is read-only (view and export only) and your data is kept for 90 days.</p>
+            <h2 className="text-sm font-medium text-slate-900">Export all data</h2>
+            <p className="mt-0.5 text-xs text-slate-500">Everything as spreadsheets. Works even when the account is read-only.</p>
           </div>
-          <button onClick={() => setCancelling(true)} className="px-4 py-2 text-sm font-semibold text-red-700 border border-red-200 hover:border-red-300 rounded-xl">Cancel subscription</button>
+          <button onClick={() => setExporting(true)} className={btn.secondary}>Export…</button>
         </div>
-      )}
+        {canCancel && (
+          <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center">
+            <div className="flex-1">
+              <h2 className="text-sm font-medium text-slate-900">Cancel subscription</h2>
+              <p className="mt-0.5 text-xs text-slate-500">You keep full access until {day(state.currentPeriodEnd)}. After that the account is read-only (view and export only) and your data is kept for 90 days.</p>
+            </div>
+            <button onClick={() => setCancelling(true)} className={`${btn.secondary} !text-red-600`}>Cancel subscription</button>
+          </div>
+        )}
+      </Panel>
 
       <ExportDialog open={exporting} onClose={() => setExporting(false)} />
       <ReasonDialog

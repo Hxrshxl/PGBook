@@ -13,8 +13,8 @@ import { daysUntil, relative } from '@/components/admin/format'
 
 function Kpi({ label, value, sub, tone = 'text-slate-900' }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-4">
-      <p className={`text-2xl font-bold ${tone}`}>{value}</p>
+    <div className="bg-white rounded-xl border border-slate-200 p-4">
+      <p className={`text-2xl font-semibold ${tone}`}>{value}</p>
       <p className="text-slate-700 text-sm font-medium mt-0.5">{label}</p>
       {sub && <p className="text-slate-400 text-xs mt-0.5">{sub}</p>}
     </div>
@@ -62,19 +62,19 @@ export default function CommandCenterPage() {
     && !attention.failedOwnerLogins && !attention.failedAdminLogins && !attention.payoutChanges
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="px-4 py-6 sm:px-6 lg:px-8 lg:py-8 max-w-7xl mx-auto space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Command Center</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-slate-900">Overview</h1>
           <p className="text-slate-500 text-sm mt-1">Platform health and what needs a decision.</p>
         </div>
-        <button onClick={load} disabled={refreshing} className="flex items-center gap-2 text-sm text-slate-600 border border-slate-200 bg-white rounded-xl px-3 py-2 hover:border-slate-300 disabled:opacity-60">
+        <button onClick={load} disabled={refreshing} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md border border-slate-200 bg-white font-medium text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50">
           <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} /> Refresh
         </button>
       </div>
 
       <section>
-        <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3">Owners</h2>
+        <h2 className="text-[13px] font-medium text-slate-900 mb-3">Owners</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3">
           <Kpi label="Total owners" value={owners.total} sub={`+${owners.signups7} this week · +${owners.signups30} in 30d`} />
           <Kpi label="Active (30 days)" value={owners.active30} sub={owners.total ? `${Math.round((owners.active30 / owners.total) * 100)}% of owners` : '—'} />
@@ -87,7 +87,7 @@ export default function CommandCenterPage() {
       </section>
 
       <section>
-        <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3">Platform usage</h2>
+        <h2 className="text-[13px] font-medium text-slate-900 mb-3">Platform usage</h2>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <Kpi label="Active tenants" value={usage.activeTenants.toLocaleString('en-IN')} />
           <Kpi label="Beds managed" value={usage.beds.toLocaleString('en-IN')} sub="owners who entered bed counts" />
@@ -101,7 +101,7 @@ export default function CommandCenterPage() {
       </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <section className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+        <section className="lg:col-span-2 bg-white rounded-xl border border-slate-200 overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
             <AlertTriangle size={15} className="text-amber-500" />
             <h2 className="font-semibold text-slate-900 text-sm">Needs attention</h2>
@@ -143,7 +143,7 @@ export default function CommandCenterPage() {
           </div>
         </section>
 
-        <section className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+        <section className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
             <Database size={15} className="text-emerald-500" />
             <h2 className="font-semibold text-slate-900 text-sm">System health</h2>
@@ -167,7 +167,7 @@ export default function CommandCenterPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <section className="bg-white rounded-2xl border border-slate-200 p-5">
+        <section className="bg-white rounded-xl border border-slate-200 p-5">
           <h2 className="font-semibold text-slate-900 text-sm mb-1">Signups per week</h2>
           <p className="text-xs text-slate-400 mb-5">Last 12 weeks</p>
           <BarChart
@@ -177,7 +177,7 @@ export default function CommandCenterPage() {
         </section>
 
         {seeAccounts && (
-          <section className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+          <section className="bg-white rounded-xl border border-slate-200 overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
               <h2 className="font-semibold text-slate-900 text-sm">Live activity</h2>
               <Link href="/admin/audit" className="text-xs text-indigo-600 hover:text-indigo-700">Audit log →</Link>

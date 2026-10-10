@@ -1,11 +1,15 @@
 'use client'
 import { useCallback, useEffect, useState } from 'react'
-import { IndianRupee, Users, ShieldCheck, Building2, ScrollText, RefreshCw } from 'lucide-react'
+import { ScrollText, RefreshCw } from 'lucide-react'
 import { api } from '@/utils/api'
-import { describeEvent, eventCategory, deviceLabel, ADMIN_ROLE_LABELS } from '@/utils/auditText'
+import { describeEvent, deviceLabel, ADMIN_ROLE_LABELS } from '@/utils/auditText'
 import { useAuth } from '@/context/AuthContext'
 import EmptyState from '@/components/ui/EmptyState'
 import Spinner from '@/components/ui/Spinner'
+import Badge from '@/components/ui/Badge'
+import PageHeader from '@/components/ui/PageHeader'
+import Tabs from '@/components/ui/Tabs'
+import { btn, page } from '@/components/ui/styles'
 
 const FILTERS = [
   { key: '', label: 'All' },
@@ -14,14 +18,6 @@ const FILTERS = [
   { key: 'security', label: 'Account & security' },
   { key: 'pgbook', label: 'PGBook team' },
 ]
-
-const ICONS = {
-  money: { icon: IndianRupee, cls: 'bg-emerald-50 text-emerald-600' },
-  tenants: { icon: Users, cls: 'bg-indigo-50 text-indigo-600' },
-  security: { icon: ShieldCheck, cls: 'bg-slate-100 text-slate-600' },
-  pgbook: { icon: Building2, cls: 'bg-amber-50 text-amber-700' },
-  admin: { icon: Building2, cls: 'bg-amber-50 text-amber-700' },
-}
 
 function dayLabel(iso) {
   const d = new Date(iso)
@@ -87,24 +83,12 @@ export default function ActivityPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Activity</h1>
-        <p className="text-slate-500 text-sm mt-1">
-          Everything that happened in your account — including any action taken by the PGBook team, with their reason.
-        </p>
-      </div>
+    <div className={`${page} mx-auto max-w-3xl`}>
+      <PageHeader title="Activity" description="Everything that happened in your account, including any action by the PGBook team and their reason." />
 
-      <div className="flex gap-1 bg-slate-100 p-1 rounded-xl mb-6 w-fit max-w-full overflow-x-auto">
-        {FILTERS.map(f => (
-          <button key={f.key} onClick={() => setFilter(f.key)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${filter === f.key ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-            {f.label}
-          </button>
-        ))}
-      </div>
+      <Tabs className="mb-6" tabs={FILTERS} value={filter} onChange={setFilter} />
 
-      {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
+      {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
 
       {loading ? (
         <div className="flex justify-center py-16"><Spinner size={24} /></div>
@@ -114,22 +98,24 @@ export default function ActivityPage() {
         <div className="space-y-6">
           {groups.map(group => (
             <section key={group.label}>
-              <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{group.label}</h2>
-              <ul className="bg-white rounded-2xl border border-slate-100 shadow-sm divide-y divide-slate-50">
+              <h2 className="mb-2 text-xs font-medium text-slate-500">{group.label}</h2>
+              <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
                 {group.items.map(e => {
-                  const category = e.actor.realm === 'admin' ? 'pgbook' : eventCategory(e.action)
-                  const { icon: Icon, cls } = ICONS[category] ?? ICONS.security
+                  const byTeam = e.actor.realm === 'admin'
                   const isAuth = e.action.startsWith('auth.')
                   return (
-                    <li key={e.id} className={`flex gap-3 px-4 py-3.5 ${e.actor.realm === 'admin' ? 'bg-amber-50/40' : ''}`}>
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${cls}`}><Icon size={15} /></div>
+                    <li key={e.id} className="flex gap-4 px-4 py-3">
+                      <time dateTime={e.createdAt} className="w-16 shrink-0 pt-px text-xs tabular-nums text-slate-500">
+                        {new Date(e.createdAt).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}
+                      </time>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm text-slate-900">{describeEvent(e)}</p>
-                        <p className="text-xs text-slate-400 mt-0.5">
-                          {who(e)} · {new Date(e.createdAt).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}
-                          {isAuth && (e.userAgent || e.ip) && ` · ${[deviceLabel(e.userAgent), e.ip].filter(Boolean).join(' · ')}`}
+                        <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-slate-500">
+                          {byTeam && <Badge tone="amber">PGBook team</Badge>}
+                          <span>{who(e)}</span>
+                          {isAuth && (e.userAgent || e.ip) && <span>· {[deviceLabel(e.userAgent), e.ip].filter(Boolean).join(' · ')}</span>}
                         </p>
-                        {e.reason && <p className="text-xs text-slate-600 mt-1.5 bg-slate-50 rounded-lg px-2.5 py-1.5">Reason: {e.reason}</p>}
+                        {e.reason && <p className="mt-1.5 border-l-2 border-amber-300 pl-2.5 text-xs text-slate-600">Reason: {e.reason}</p>}
                       </div>
                     </li>
                   )
@@ -139,7 +125,7 @@ export default function ActivityPage() {
           ))}
           {cursor && (
             <div className="flex justify-center">
-              <button onClick={loadMore} disabled={loadingMore} className="flex items-center gap-2 text-sm font-medium text-slate-600 border border-slate-200 rounded-xl px-4 py-2 hover:border-slate-300 disabled:opacity-60">
+              <button onClick={loadMore} disabled={loadingMore} className={btn.secondary}>
                 <RefreshCw size={14} className={loadingMore ? 'animate-spin' : ''} /> {loadingMore ? 'Loading…' : 'Load older activity'}
               </button>
             </div>

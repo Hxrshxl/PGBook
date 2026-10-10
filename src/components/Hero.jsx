@@ -1,168 +1,103 @@
-'use client'
 import Link from 'next/link'
-import { ArrowRight, CheckCircle2, Star, TrendingUp, Bell, FileText } from 'lucide-react'
-import { motion } from 'framer-motion'
-import { fadeUp, staggerContainer } from '@/utils/animations'
+import { ArrowRight } from 'lucide-react'
+import Badge from '@/components/ui/Badge'
+import { LogoMark } from '@/components/ui/Logo'
+import { button } from '@/components/ui/styles'
 
-const badges = [
-  { icon: CheckCircle2, text: 'No setup fees',       color: 'text-emerald-400' },
-  { icon: Star,         text: '4.9/5 owner rating',  color: 'text-amber-400'  },
-  { icon: TrendingUp,   text: '500+ PGs onboard',    color: 'text-indigo-400' },
+const NAV = ['Overview', 'Approvals', 'Tenants', 'Rooms', 'Complaints', 'Rent', 'Utility bills', 'Expenses', 'Deposits', 'Receipts']
+const STATS = [
+  ['Collected', '₹3,84,500', '31 of 38 paid'],
+  ['Outstanding', '₹71,000', '₹9,000 cash to confirm'],
+  ['Occupancy', '92%', '38 of 41 beds'],
+  ['Net this month', '₹1,62,300', 'after expenses'],
 ]
+const ROWS = [
+  ['Ananya Rao', 'A-101', '₹12,500', '₹12,500', 'paid'],
+  ['Rohit Kulkarni', 'A-102', '₹11,000', '₹6,000', 'partial'],
+  ['Meera Iyer', 'A-104', '₹12,500', '₹12,500', 'paid'],
+  ['Karan Mehta', 'B-201', '₹10,500', '₹0', 'pending'],
+  ['Sneha Pillai', 'B-203', '₹11,000', '₹11,000', 'paid'],
+]
+
+/** A static, scaled-down rendering of the real Rent screen. */
+function ProductPreview() {
+  return (
+    <div aria-hidden="true" className="pointer-events-none select-none overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_1px_2px_rgb(0_0_0/0.04),0_12px_32px_-12px_rgb(0_0_0/0.12)]">
+      <div className="flex">
+        <div className="hidden w-48 shrink-0 border-r border-slate-200 bg-slate-50/60 p-3 md:block">
+          <div className="mb-4 flex items-center gap-2 px-2 pt-1"><LogoMark size={20} className="text-slate-900" /><span className="text-[13px] font-semibold text-slate-900">PGBook</span></div>
+          {NAV.map(n => (
+            <div key={n} className={`rounded-md px-2 py-1.5 text-[12px] ${n === 'Rent' ? 'bg-white font-medium text-slate-900 ring-1 ring-slate-200' : 'text-slate-500'}`}>{n}</div>
+          ))}
+        </div>
+        <div className="min-w-0 flex-1 p-4 sm:p-6">
+          <div className="mb-4 flex items-end justify-between gap-3">
+            <div>
+              <p className="text-[15px] font-semibold text-slate-900">Rent</p>
+              <p className="text-[12px] text-slate-500">Who has paid for October, and who still owes.</p>
+            </div>
+            <div className="hidden rounded-md border border-slate-200 px-2.5 py-1 text-[12px] text-slate-700 sm:block">October 2026</div>
+          </div>
+          <div className="mb-4 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-slate-200 bg-slate-200 lg:grid-cols-4">
+            {STATS.map(([label, value, sub]) => (
+              <div key={label} className="bg-white px-3 py-2.5">
+                <p className="text-[11px] text-slate-500">{label}</p>
+                <p className="text-[15px] font-semibold tabular-nums text-slate-900">{value}</p>
+                <p className="truncate text-[10px] text-slate-500">{sub}</p>
+              </div>
+            ))}
+          </div>
+          <div className="overflow-hidden rounded-lg border border-slate-200">
+            <table className="w-full text-[12px]">
+              <thead>
+                <tr className="border-b border-slate-200 text-left text-[11px] text-slate-500">
+                  <th className="py-2 pl-3 pr-2 font-medium">Tenant</th>
+                  <th className="px-2 py-2 text-right font-medium">Total</th>
+                  <th className="hidden px-2 py-2 text-right font-medium sm:table-cell">Paid</th>
+                  <th className="px-2 py-2 pr-3 font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {ROWS.map(([name, room, total, paid, status]) => (
+                  <tr key={name}>
+                    <td className="py-2 pl-3 pr-2"><p className="font-medium text-slate-900">{name}</p><p className="text-[11px] text-slate-500">{room}</p></td>
+                    <td className="px-2 py-2 text-right tabular-nums text-slate-900">{total}</td>
+                    <td className="hidden px-2 py-2 text-right tabular-nums text-slate-600 sm:table-cell">{paid}</td>
+                    <td className="px-2 py-2 pr-3"><Badge status={status} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function Hero() {
   return (
-    <section className="hero-bg min-h-screen flex items-center pt-16 relative overflow-hidden">
-      {/* Grid overlay */}
-      <div
-        className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage: 'linear-gradient(rgba(255,255,255,.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.5) 1px, transparent 1px)',
-          backgroundSize: '40px 40px',
-        }}
-      />
-
-      <div className="max-w-6xl mx-auto px-5 sm:px-8 py-24 relative">
-        <motion.div
-          className="max-w-4xl mx-auto text-center"
-          variants={staggerContainer}
-          initial="hidden"
-          animate="visible"
-        >
-          {/* Eyebrow */}
-          <motion.div variants={fadeUp} className="inline-flex items-center gap-2 bg-indigo-950/60 border border-indigo-500/30 rounded-full px-4 py-1.5 mb-8">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-indigo-300 text-sm font-medium">Now available — Pune, Bangalore & Hyderabad</span>
-          </motion.div>
-
-          {/* Headline */}
-          <motion.h1
-            variants={fadeUp}
-            className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-[1.1] tracking-tight mb-6"
-          >
-            The operating system{' '}
-            <span className="gradient-text">for PG owners</span>
-          </motion.h1>
-
-          <motion.p variants={fadeUp} className="text-slate-400 text-lg sm:text-xl leading-relaxed max-w-2xl mx-auto mb-10">
-            Manage tenants, collect rent, split utility bills, and send WhatsApp reminders —
-            all from one dashboard. Built for the Indian PG owner who runs on instinct and post-its.
-          </motion.p>
-
-          {/* CTAs */}
-          <motion.div variants={fadeUp} className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
-            <Link
-              href="/signup"
-              className="glow-btn inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-400 text-white font-semibold px-7 py-3.5 rounded-xl text-base transition-all duration-200 w-full sm:w-auto justify-center"
-            >
-              Start 14-day free trial
-              <ArrowRight size={18} />
-            </Link>
-            <a
-              href="#how-it-works"
-              className="inline-flex items-center gap-2 border border-white/15 hover:border-white/30 text-white font-semibold px-7 py-3.5 rounded-xl text-base transition-all duration-200 w-full sm:w-auto justify-center hover:bg-white/5"
-            >
-              See how it works
-            </a>
-          </motion.div>
-
-          {/* Trust badges */}
-          <motion.div variants={fadeUp} className="flex flex-wrap items-center justify-center gap-6">
-            {badges.map(({ icon: Icon, text, color }) => (
-              <div key={text} className="flex items-center gap-2">
-                <Icon size={16} className={color} />
-                <span className="text-slate-400 text-sm">{text}</span>
-              </div>
-            ))}
-          </motion.div>
-        </motion.div>
-
-        {/* Hero visual — dashboard mockup with framer-motion float */}
-        <motion.div
-          className="mt-20 relative max-w-5xl mx-auto"
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: [0, -8, 0] }}
-          transition={{
-            opacity: { duration: 0.6, delay: 0.5 },
-            y: { delay: 0.5, duration: 0.6, times: [0, 0.5, 1], ease: 'easeOut', repeat: Infinity, repeatType: 'mirror', repeatDelay: 0 },
-          }}
-        >
-          <div className="absolute -inset-1 bg-gradient-to-r from-indigo-600 to-orange-500 rounded-2xl opacity-20 blur-lg" />
-          <div className="relative bg-[#111827] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
-            {/* Browser bar */}
-            <div className="flex items-center gap-2 px-4 py-3 bg-[#0d1117] border-b border-white/5">
-              <div className="flex gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-red-500/70" />
-                <span className="w-3 h-3 rounded-full bg-amber-500/70" />
-                <span className="w-3 h-3 rounded-full bg-emerald-500/70" />
-              </div>
-              <div className="flex-1 mx-4 bg-white/5 rounded-md px-3 py-1 text-xs text-slate-500 font-mono text-center">
-                app.pgbook.in/dashboard
-              </div>
-            </div>
-
-            {/* Dashboard content */}
-            <div className="p-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="dashboard-card rounded-xl p-4">
-                <p className="text-slate-500 text-xs mb-1">Monthly Revenue</p>
-                <p className="text-white font-bold text-2xl" style={{ fontFamily: 'Space Grotesk' }}>₹2,40,000</p>
-                <p className="text-emerald-400 text-xs mt-1">+8% vs last month</p>
-              </div>
-              <div className="dashboard-card rounded-xl p-4">
-                <p className="text-slate-500 text-xs mb-1">Rent Collected</p>
-                <p className="text-white font-bold text-2xl" style={{ fontFamily: 'Space Grotesk' }}>18/20</p>
-                <p className="text-amber-400 text-xs mt-1">2 pending reminders</p>
-              </div>
-              <div className="dashboard-card rounded-xl p-4">
-                <p className="text-slate-500 text-xs mb-1">Active Tenants</p>
-                <p className="text-white font-bold text-2xl" style={{ fontFamily: 'Space Grotesk' }}>20</p>
-                <p className="text-slate-500 text-xs mt-1">2 vacancies</p>
-              </div>
-
-              <div className="sm:col-span-2 dashboard-card rounded-xl p-4">
-                <p className="text-slate-400 text-xs font-semibold mb-3 uppercase tracking-wider">Recent Payments</p>
-                {[
-                  { name: 'Ravi Sharma',  room: 'A-204', amount: '₹12,000', time: '2m ago',    status: 'paid'    },
-                  { name: 'Priya Menon',  room: 'B-102', amount: '₹10,500', time: '1h ago',    status: 'paid'    },
-                  { name: 'Aakash Patel', room: 'A-301', amount: '₹11,000', time: 'Due today', status: 'pending' },
-                ].map((t) => (
-                  <div key={t.name} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
-                    <div className="flex items-center gap-3">
-                      <div className="w-7 h-7 rounded-full bg-indigo-900 flex items-center justify-center text-indigo-300 text-xs font-bold">
-                        {t.name[0]}
-                      </div>
-                      <div>
-                        <p className="text-white text-xs font-medium">{t.name}</p>
-                        <p className="text-slate-500 text-xs">{t.room}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-white text-xs font-semibold">{t.amount}</p>
-                      <span className={`text-xs ${t.status === 'paid' ? 'text-emerald-400' : 'text-amber-400'}`}>
-                        {t.time}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="dashboard-card rounded-xl p-4">
-                <p className="text-slate-400 text-xs font-semibold mb-3 uppercase tracking-wider">Quick Actions</p>
-                <div className="space-y-2">
-                  <button className="w-full flex items-center gap-2 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-600/30 text-indigo-300 text-xs font-medium px-3 py-2 rounded-lg transition-colors">
-                    <Bell size={12} /> Send rent reminders
-                  </button>
-                  <button className="w-full flex items-center gap-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-600/30 text-emerald-300 text-xs font-medium px-3 py-2 rounded-lg transition-colors">
-                    <FileText size={12} /> Generate receipts
-                  </button>
-                  <button className="w-full flex items-center gap-2 bg-amber-600/20 hover:bg-amber-600/30 border border-amber-600/30 text-amber-300 text-xs font-medium px-3 py-2 rounded-lg transition-colors">
-                    <TrendingUp size={12} /> Split utility bills
-                  </button>
-                </div>
-              </div>
-            </div>
+    <section className="border-b border-slate-200 bg-white">
+      <div className="mx-auto max-w-6xl px-5 pb-16 pt-16 sm:px-8 sm:pt-24">
+        <div className="max-w-3xl">
+          <p className="mb-5 text-sm font-medium text-indigo-700">For PG and hostel owners in India</p>
+          <h1 className="text-4xl font-semibold leading-[1.1] tracking-tight text-slate-900 sm:text-5xl lg:text-[56px]">
+            Rent, tenants and bills for your PG, in one place.
+          </h1>
+          <p className="mt-6 max-w-2xl text-lg leading-relaxed text-slate-600">
+            Know who has paid and who hasn&apos;t, split the electricity bill in a minute, send WhatsApp reminders and receipts,
+            and give your tenants an app to pay and raise complaints. Replace the register, the spreadsheet and the WhatsApp group.
+          </p>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <Link href="/signup" className={button('primary', 'lg')}>Start 14-day free trial <ArrowRight size={16} /></Link>
+            <a href="#features" className={button('secondary', 'lg')}>See what it does</a>
           </div>
-        </motion.div>
+          <p className="mt-4 text-sm text-slate-500">No card needed. Prices include GST. Export all your data any time.</p>
+        </div>
+
+        <div className="mt-14 sm:mt-16">
+          <ProductPreview />
+        </div>
       </div>
     </section>
   )

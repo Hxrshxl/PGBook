@@ -1,6 +1,6 @@
 'use client'
 import { useState, useMemo } from 'react'
-import { IndianRupee, RefreshCw, Clock, Timer } from 'lucide-react'
+import { IndianRupee, RefreshCw, Timer } from 'lucide-react'
 import { useAppData } from '@/context/AppContext'
 import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/context/ToastContext'
@@ -13,6 +13,10 @@ import MonthSelector from '@/components/ui/MonthSelector'
 import Badge from '@/components/ui/Badge'
 import Modal from '@/components/ui/Modal'
 import EmptyState from '@/components/ui/EmptyState'
+import PageHeader from '@/components/ui/PageHeader'
+import StatStrip from '@/components/ui/StatStrip'
+import RowMenu from '@/components/ui/RowMenu'
+import { btn, button, page } from '@/components/ui/styles'
 import RecordPaymentModal from '@/components/rent/RecordPaymentModal'
 import PaymentDetailsModal from '@/components/rent/PaymentDetailsModal'
 
@@ -109,46 +113,81 @@ export default function RentTrackerPage() {
     showToast('Dues deleted.', 'warning')
   }
 
+  function figures({ tenant, payment }) {
+    const rent = payment?.rentAmount ?? tenant.rentAmount
+    const charges = payment ? payment.extraCharges ?? [] : tenant.recurringCharges ?? []
+    const utility = payment?.utilityShare ?? 0
+    const extras = chargesTotal(charges) + utility
+    const extrasTitle = [...charges.map(c => `${c.label} ${formatCurrency(c.amount)}`), utility ? `Utilities ${formatCurrency(utility)}` : null].filter(Boolean).join(' + ')
+    const total = payment ? getTotalDue(payment) : rent + extras
+    const balance = payment ? getBalance(payment) : total
+    const waiting = payment ? pendingCashBy.get(payment.id) ?? [] : []
+    return {
+      rent, extras, extrasTitle, total, balance,
+      late: payment?.lateFee ?? 0,
+      paid: payment?.amountPaid ?? 0,
+      status: payment?.status ?? 'pending',
+      waitingTotal: waiting.reduce((a, c) => a + c.amount, 0),
+    }
+  }
+
+  function actions({ tenant, payment }, f) {
+    if (!payment) {
+      return canCreateDues && (
+        <button onClick={() => createOne.run(tenant)} disabled={createOne.busy} className={button('secondary', 'xs')}>Create dues</button>
+      )
+    }
+    return (
+      <>
+        {f.status !== 'paid' && canRecord && (
+          <button onClick={() => setRecordingId(payment.id)} className={button('secondary', 'xs')}>Record payment</button>
+        )}
+        {f.status !== 'paid' && canCollect && f.balance - f.waitingTotal > 0 && (
+          <button onClick={() => setCollectingId(payment.id)} className={button('secondary', 'xs')}>Collect cash</button>
+        )}
+        <button onClick={() => setDetailsId(payment.id)} className={button('ghost', 'xs')}>Details</button>
+      </>
+    )
+  }
+
+  // The same actions as a compact menu, for table widths where the buttons don't fit.
+  const menuFor = ({ tenant, payment }, f) => payment ? [
+    { label: 'Record payment', onClick: () => setRecordingId(payment.id), hidden: f.status === 'paid' || !canRecord },
+    { label: 'Collect cash', onClick: () => setCollectingId(payment.id), hidden: f.status === 'paid' || !canCollect || f.balance - f.waitingTotal <= 0 },
+    { label: 'Details', onClick: () => setDetailsId(payment.id) },
+  ] : [
+    { label: 'Create dues', onClick: () => createOne.run(tenant), hidden: !canCreateDues },
+  ]
+
+  const place = tenant => `${tenant.room}${showProperty ? ` · ${propertyById.get(tenant.propertyId)?.name ?? ''}` : ''}${tenant.status === 'vacated' ? ' · moved out' : ''}`
+  const dash = <span className="text-slate-300">—</span>
+
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Rent Tracker</h1>
-          <p className="text-slate-500 text-sm mt-1">Track rent collection for {formatMonth(month)}</p>
-        </div>
-        <div className="flex items-center gap-3">
+    <div className={`${page} mx-auto max-w-6xl`}>
+      <PageHeader
+        title="Rent"
+        description={`Who has paid for ${formatMonth(month)}, and who still owes.`}
+        actions={<>
           {can('rent.lateFees') && lateFeesOn && (
-            <button onClick={() => lateFees.run()} disabled={lateFees.busy} title="Add late fees to overdue dues under each property's late fee rule"
-              className="flex items-center gap-1.5 text-sm font-medium text-slate-700 border border-slate-200 hover:border-slate-300 bg-white px-3 py-1.5 rounded-lg disabled:opacity-60">
+            <button onClick={() => lateFees.run()} disabled={lateFees.busy} title="Add late fees to overdue dues under each property's late fee rule" className={btn.secondary}>
               <Timer size={14} /> {lateFees.busy ? 'Applying…' : 'Apply late fees'}
             </button>
           )}
           <MonthSelector value={month} onChange={setMonth} />
-        </div>
-      </div>
+        </>}
+      />
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-        {[
-          { label: 'Collected',   value: formatCurrencyRounded(summary.collected),   cls: 'text-emerald-600' },
-          { label: 'Outstanding', value: formatCurrencyRounded(summary.outstanding), cls: 'text-amber-600'   },
-          { label: 'Paid',        value: `${summary.paid} tenant${summary.paid === 1 ? '' : 's'}`,       cls: 'text-slate-900' },
-          { label: 'Pending',     value: `${summary.pending} tenant${summary.pending === 1 ? '' : 's'}`, cls: 'text-red-600'   },
-        ].map(s => (
-          <div key={s.label} className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
-            <p className={`text-xl font-bold mb-0.5 ${s.cls}`}>{s.value}</p>
-            <p className="text-slate-500 text-xs">{s.label}</p>
-          </div>
-        ))}
-      </div>
-      <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-500 -mt-3 mb-6">
-        {summary.lateFees > 0 && <span>Includes {formatCurrency(summary.lateFees)} in late fees</span>}
-        {summary.pendingCash > 0 && <span className="text-amber-700 flex items-center gap-1"><Clock size={12} /> {formatCurrencyRounded(summary.pendingCash)} cash waiting for confirmation</span>}
-      </div>
+      <StatStrip className="mb-4" items={[
+        { label: 'Collected', value: formatCurrencyRounded(summary.collected), sub: summary.lateFees > 0 ? `incl. ${formatCurrency(summary.lateFees)} late fees` : undefined },
+        { label: 'Outstanding', value: formatCurrencyRounded(summary.outstanding), tone: summary.outstanding > 0 ? 'warning' : 'default', sub: summary.pendingCash > 0 ? `${formatCurrencyRounded(summary.pendingCash)} cash awaiting confirmation` : undefined },
+        { label: 'Paid in full', value: summary.paid, sub: `tenant${summary.paid === 1 ? '' : 's'}` },
+        { label: 'Not fully paid', value: summary.pending, sub: `tenant${summary.pending === 1 ? '' : 's'}`, tone: summary.pending > 0 ? 'negative' : 'default' },
+      ]} />
 
       {noPaymentRows.length > 0 && canCreateDues && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-amber-50 border border-amber-200 rounded-xl px-5 py-3 mb-5">
-          <p className="text-amber-800 text-sm font-medium">{noPaymentRows.length} tenant(s) have no dues for {formatMonth(month)} yet.</p>
-          <button onClick={() => generate.run()} disabled={generate.busy} className="flex items-center justify-center gap-1.5 text-sm font-semibold text-amber-700 bg-white border border-amber-300 hover:border-amber-400 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-60">
+        <div className="mb-4 flex flex-col justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 sm:flex-row sm:items-center">
+          <p className="flex items-center gap-2 text-sm text-slate-700"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" />{noPaymentRows.length} tenant{noPaymentRows.length === 1 ? ' has' : 's have'} no dues for {formatMonth(month)} yet.</p>
+          <button onClick={() => generate.run()} disabled={generate.busy} className={button('secondary', 'sm')}>
             <RefreshCw size={13} className={generate.busy ? 'animate-spin' : ''} /> {generate.busy ? 'Creating…' : 'Create dues for all'}
           </button>
         </div>
@@ -160,75 +199,39 @@ export default function RentTrackerPage() {
       {rows.length === 0 ? (
         <EmptyState icon={IndianRupee} title="No tenants for this month" message="Add tenants first to track rent." />
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[820px]">
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full xl:min-w-[860px] text-sm">
               <thead>
-                <tr className="border-b border-slate-100 bg-slate-50">
-                  {['Tenant', 'Rent', 'Extras', 'Late fee', 'Total Due', 'Paid', 'Balance', 'Status', 'Actions'].map((h, i) => (
-                    <th key={h} scope="col" className={`text-slate-500 font-medium text-xs uppercase tracking-wider px-4 py-3.5 ${i === 0 ? 'text-left pl-5' : i === 7 ? 'text-center' : i === 8 ? 'text-right pr-5' : 'text-right'}`}>{h}</th>
+                <tr className="border-b border-slate-200">
+                  {['Tenant', 'Rent', 'Extras', 'Late fee', 'Total', 'Paid', 'Balance', 'Status', ''].map((h, i) => (
+                    <th key={h || 'actions'} scope="col" className={`whitespace-nowrap px-3 py-2.5 text-xs font-medium text-slate-500 ${i >= 1 && i <= 3 ? 'hidden xl:table-cell ' : ''}${i === 0 ? 'pl-4 text-left' : i === 7 ? 'text-left' : i === 8 ? 'pr-4' : 'text-right'}`}>{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
-                {rows.map(({ tenant, payment }) => {
-                  const rent = payment?.rentAmount ?? tenant.rentAmount
-                  const charges = payment ? payment.extraCharges ?? [] : tenant.recurringCharges ?? []
-                  const utility = payment?.utilityShare ?? 0
-                  const extras = chargesTotal(charges) + utility
-                  const extrasTitle = [...charges.map(c => `${c.label} ${formatCurrency(c.amount)}`), utility ? `Utilities ${formatCurrency(utility)}` : null].filter(Boolean).join(' + ')
-                  const late = payment?.lateFee ?? 0
-                  const total = payment ? getTotalDue(payment) : rent + extras
-                  const paid = payment?.amountPaid ?? 0
-                  const balance = payment ? getBalance(payment) : total
-                  const status = payment?.status ?? 'pending'
-                  const waiting = payment ? pendingCashBy.get(payment.id) ?? [] : []
-                  const waitingTotal = waiting.reduce((a, c) => a + c.amount, 0)
+              <tbody className="divide-y divide-slate-100">
+                {rows.map(row => {
+                  const { tenant, payment } = row
+                  const f = figures(row)
                   return (
-                    <tr key={tenant.id} className="hover:bg-slate-50/60 transition-colors">
-                      <td className="pl-5 pr-4 py-3.5">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-bold shrink-0">{tenant.name[0]}</div>
-                          <div>
-                            <p className="font-medium text-slate-900">{tenant.name}</p>
-                            <p className="text-slate-400 text-xs">Room {tenant.room}{showProperty && ` · ${propertyById.get(tenant.propertyId)?.name ?? ''}`}{tenant.status === 'vacated' && ' · Vacated'}</p>
-                          </div>
-                        </div>
+                    <tr key={tenant.id} className="hover:bg-slate-50/70">
+                      <td className="py-2.5 pl-4 pr-3">
+                        <p className="whitespace-nowrap font-medium text-slate-900">{tenant.name}</p>
+                        <p className="max-w-[200px] truncate text-xs text-slate-500 xl:max-w-none xl:whitespace-nowrap" title={place(tenant)}>{place(tenant)}</p>
                       </td>
-                      <td className="px-4 py-3.5 text-right text-slate-600">{formatCurrency(rent)}</td>
-                      <td className="px-4 py-3.5 text-right text-slate-600" title={extrasTitle || undefined}>{extras ? formatCurrency(extras) : '—'}</td>
-                      <td className={`px-4 py-3.5 text-right ${late ? 'text-red-600' : 'text-slate-400'}`}>{late ? formatCurrency(late) : '—'}</td>
-                      <td className="px-4 py-3.5 text-right font-semibold text-slate-900">{formatCurrency(total)}</td>
-                      <td className="px-4 py-3.5 text-right text-emerald-600 font-medium">{formatCurrency(paid)}</td>
-                      <td className="px-4 py-3.5 text-right text-amber-600 font-medium">{formatCurrency(balance)}</td>
-                      <td className="px-4 py-3.5 text-center">
-                        {payment ? <Badge status={status} /> : <span className="text-xs text-slate-400 italic">No dues</span>}
-                        {waitingTotal > 0 && <p className="text-[11px] text-amber-700 mt-1 whitespace-nowrap">{formatCurrency(waitingTotal)} cash pending</p>}
+                      <td className="hidden px-3 py-2.5 text-right xl:table-cell tabular-nums text-slate-600">{formatCurrency(f.rent)}</td>
+                      <td className="hidden px-3 py-2.5 text-right xl:table-cell tabular-nums text-slate-600" title={f.extrasTitle || undefined}>{f.extras ? formatCurrency(f.extras) : dash}</td>
+                      <td className="hidden px-3 py-2.5 text-right xl:table-cell tabular-nums">{f.late ? <span className="text-red-600">{formatCurrency(f.late)}</span> : dash}</td>
+                      <td className="px-3 py-2.5 text-right font-medium tabular-nums text-slate-900">{formatCurrency(f.total)}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums text-slate-600">{formatCurrency(f.paid)}</td>
+                      <td className="px-3 py-2.5 text-right font-medium tabular-nums text-slate-900">{f.balance > 0 ? formatCurrency(f.balance) : dash}</td>
+                      <td className="px-3 py-2.5">
+                        {payment ? <Badge status={f.status} /> : <span className="whitespace-nowrap text-xs text-slate-400">No dues yet</span>}
+                        {f.waitingTotal > 0 && <p className="mt-1 text-[11px] leading-tight text-amber-700">{formatCurrency(f.waitingTotal)} cash pending</p>}
                       </td>
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center justify-end gap-2">
-                          {payment ? (
-                            <>
-                              {status !== 'paid' && canRecord && (
-                                <button onClick={() => setRecordingId(payment.id)} className="text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-lg transition-colors">
-                                  Record payment
-                                </button>
-                              )}
-                              {status !== 'paid' && canCollect && balance - waitingTotal > 0 && (
-                                <button onClick={() => setCollectingId(payment.id)} className="text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-lg transition-colors">
-                                  Collect cash
-                                </button>
-                              )}
-                              <button onClick={() => setDetailsId(payment.id)} className="text-xs font-medium text-slate-600 bg-white hover:bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg transition-colors">
-                                Details
-                              </button>
-                            </>
-                          ) : canCreateDues && (
-                            <button onClick={() => createOne.run(tenant)} disabled={createOne.busy} className="text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-60">
-                              Create dues
-                            </button>
-                          )}
-                        </div>
+                      <td className="py-2.5 pl-3 pr-4">
+                        <div className="hidden items-center justify-end gap-1.5 xl:flex">{actions(row, f)}</div>
+                        <div className="text-right xl:hidden"><RowMenu items={menuFor(row, f)} label={`Actions for ${tenant.name}`} /></div>
                       </td>
                     </tr>
                   )
@@ -236,16 +239,41 @@ export default function RentTrackerPage() {
               </tbody>
             </table>
           </div>
+
+          <ul className="divide-y divide-slate-100 md:hidden">
+            {rows.map(row => {
+              const { tenant, payment } = row
+              const f = figures(row)
+              return (
+                <li key={tenant.id} className="px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium text-slate-900">{tenant.name}</p>
+                      <p className="truncate text-xs text-slate-500">{place(tenant)}</p>
+                    </div>
+                    {payment ? <Badge status={f.status} /> : <span className="text-xs text-slate-400">No dues yet</span>}
+                  </div>
+                  <dl className="mt-2 grid grid-cols-3 gap-2 text-xs">
+                    <div><dt className="text-slate-500">Total</dt><dd className="font-medium tabular-nums text-slate-900">{formatCurrency(f.total)}</dd></div>
+                    <div><dt className="text-slate-500">Paid</dt><dd className="tabular-nums text-slate-700">{formatCurrency(f.paid)}</dd></div>
+                    <div><dt className="text-slate-500">Balance</dt><dd className="font-medium tabular-nums text-slate-900">{f.balance > 0 ? formatCurrency(f.balance) : '—'}</dd></div>
+                  </dl>
+                  {f.waitingTotal > 0 && <p className="mt-1.5 text-[11px] text-amber-700">{formatCurrency(f.waitingTotal)} cash waiting for confirmation</p>}
+                  <div className="mt-2.5 flex flex-wrap gap-1.5">{actions(row, f)}</div>
+                </li>
+              )
+            })}
+          </ul>
         </div>
       )}
 
-      <Modal isOpen={!!recording} onClose={() => setRecordingId(null)} title={`Record Payment — ${recording?.tenant.name ?? ''}`} maxWidth="max-w-md">
+      <Modal isOpen={!!recording} onClose={() => setRecordingId(null)} title="Record payment" description={recording?.tenant.name} maxWidth="max-w-md">
         {recording && <RecordPaymentModal payment={recording.payment} tenantName={recording.tenant.name} pendingCash={pendingCashBy.get(recording.payment.id)} onSubmit={handleRecord} onClose={() => setRecordingId(null)} />}
       </Modal>
-      <Modal isOpen={!!collecting} onClose={() => setCollectingId(null)} title={`Collect cash — ${collecting?.tenant.name ?? ''}`} maxWidth="max-w-md">
+      <Modal isOpen={!!collecting} onClose={() => setCollectingId(null)} title="Collect cash" description={collecting?.tenant.name} maxWidth="max-w-md">
         {collecting && <RecordPaymentModal mode="cash" payment={collecting.payment} tenantName={collecting.tenant.name} pendingCash={pendingCashBy.get(collecting.payment.id)} onSubmit={handleCollect} onClose={() => setCollectingId(null)} />}
       </Modal>
-      <Modal isOpen={!!viewing} onClose={() => setDetailsId(null)} title={`${viewing?.tenant.name ?? ''} — ${formatMonth(month)}`} maxWidth="max-w-md">
+      <Modal isOpen={!!viewing} onClose={() => setDetailsId(null)} title={viewing?.tenant.name ?? ''} description={formatMonth(month)} maxWidth="max-w-md">
         {viewing && (
           <PaymentDetailsModal
             key={viewing.payment.id}

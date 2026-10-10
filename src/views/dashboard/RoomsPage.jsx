@@ -1,22 +1,29 @@
 'use client'
 import { useMemo, useState } from 'react'
-import { BedDouble, Pencil, Plus, Archive, Search } from 'lucide-react'
+import { BedDouble, Plus } from 'lucide-react'
 import { useAppData } from '@/context/AppContext'
 import { useAuth } from '@/context/AuthContext'
 import { useToast } from '@/context/ToastContext'
 import { useAsyncAction } from '@/hooks/useAsyncAction'
 import { formatCurrency } from '@/utils/helpers'
 import Modal from '@/components/ui/Modal'
+import Badge from '@/components/ui/Badge'
 import EmptyState from '@/components/ui/EmptyState'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import FormError from '@/components/ui/FormError'
+import PageHeader from '@/components/ui/PageHeader'
+import StatStrip from '@/components/ui/StatStrip'
+import Tabs from '@/components/ui/Tabs'
+import SearchInput from '@/components/ui/SearchInput'
+import RowMenu from '@/components/ui/RowMenu'
+import { btn, page } from '@/components/ui/styles'
 
-const inputCls = 'w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors'
-const labelCls = 'block text-slate-700 text-sm font-medium mb-1.5'
+const inputCls = 'w-full border border-slate-200 rounded-md px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 transition-colors bg-white'
+const labelCls = 'block text-[13px] font-medium text-slate-700 mb-1.5'
 
 const FILTERS = [
   { key: 'all',  label: 'All rooms' },
-  { key: 'free', label: 'Free beds' },
+  { key: 'free', label: 'With free beds' },
   { key: 'full', label: 'Full' },
 ]
 
@@ -75,8 +82,8 @@ function RoomForm({ initialData, properties, defaultPropertyId, occupied = 0, on
       </div>
       <FormError message={error} />
       <div className="flex justify-end gap-3 pt-1">
-        <button type="button" onClick={onCancel} disabled={busy} className="px-5 py-2.5 text-sm font-medium text-slate-600 border border-slate-200 rounded-xl hover:border-slate-300 disabled:opacity-50">Cancel</button>
-        <button type="submit" disabled={busy} className="px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl disabled:opacity-60">
+        <button type="button" onClick={onCancel} disabled={busy} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md border border-slate-200 bg-white font-medium text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50">Cancel</button>
+        <button type="submit" disabled={busy} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md bg-indigo-600 font-medium text-white shadow-xs transition-colors hover:bg-indigo-700 disabled:opacity-50">
           {busy ? 'Saving…' : initialData ? 'Save changes' : 'Add room'}
         </button>
       </div>
@@ -88,7 +95,7 @@ function BedDots({ capacity, occupied }) {
   return (
     <div className="flex flex-wrap gap-1" aria-hidden="true">
       {Array.from({ length: capacity }, (_, i) => (
-        <span key={i} className={`w-3.5 h-3.5 rounded ${i < occupied ? 'bg-indigo-500' : 'bg-slate-200'}`} />
+        <span key={i} className={`h-2.5 w-2.5 rounded-sm ${i < occupied ? 'bg-indigo-500' : 'bg-slate-200'}`} />
       ))}
     </div>
   )
@@ -151,80 +158,98 @@ export default function RoomsPage() {
     setArchiving(null)
   }
 
-  return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between gap-3 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Rooms & Beds</h1>
-          <p className="text-slate-500 text-sm mt-1">
-            {rows.length} rooms · {totals.beds} beds · {totals.occupied} occupied · {totals.beds - totals.occupied} free ({occupancy}% full)
-          </p>
-        </div>
-        {canManage && (
-          <button onClick={() => setAdding(true)} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm px-4 py-2.5 rounded-xl transition-colors shrink-0">
-            <Plus size={16} /> <span className="hidden sm:inline">Add Room</span><span className="sm:hidden">Add</span>
-          </button>
-        )}
-      </div>
+  const counts = {
+    all: rows.length,
+    free: rows.filter(r => r.free > 0).length,
+    full: rows.filter(r => r.free === 0).length,
+  }
+  const menuFor = r => [
+    { label: 'Edit room', onClick: () => setEditing(r) },
+    { label: r.occupied ? 'Archive (move tenants out first)' : 'Archive room', onClick: () => r.occupied ? showToast('Move or vacate the tenants in this room first.', 'warning') : setArchiving(r), danger: !r.occupied },
+  ]
 
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
-          {FILTERS.map(f => (
-            <button key={f.key} onClick={() => setFilter(f.key)}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${filter === f.key ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-              {f.label}
-            </button>
-          ))}
-        </div>
-        <div className="relative">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input type="search" aria-label="Search rooms" placeholder="Search room or tenant…" value={search} onChange={e => setSearch(e.target.value)}
-            className="w-full sm:w-64 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500" />
-        </div>
+  return (
+    <div className={`${page} mx-auto max-w-6xl`}>
+      <PageHeader
+        title="Rooms"
+        description="Beds, who is in them, and what is free."
+        actions={canManage && <button onClick={() => setAdding(true)} className={btn.primary}><Plus size={15} /> Add room</button>}
+      />
+
+      {rows.length > 0 && (
+        <StatStrip className="mb-6" items={[
+          { label: 'Rooms', value: rows.length },
+          { label: 'Beds', value: totals.beds },
+          { label: 'Occupied', value: totals.occupied, sub: `${occupancy}% occupancy` },
+          { label: 'Free beds', value: totals.beds - totals.occupied, tone: totals.beds - totals.occupied > 0 ? 'positive' : 'default' },
+        ]} />
+      )}
+
+      <div className="mb-4 flex flex-col-reverse gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <Tabs tabs={FILTERS.map(f => ({ ...f, count: counts[f.key] }))} value={filter} onChange={setFilter} className="flex-1" />
+        <SearchInput value={search} onChange={setSearch} placeholder="Search room or tenant" label="Search rooms" />
       </div>
 
       {visible.length === 0 ? (
         <EmptyState icon={BedDouble}
           title={rows.length ? 'No rooms match' : 'No rooms yet'}
           message={rows.length ? 'Try another filter or search.' : 'Add your rooms with their bed count to track occupancy and free beds.'}
-          actionLabel={!rows.length && canManage ? 'Add Room' : undefined} onAction={() => setAdding(true)} />
+          actionLabel={!rows.length && canManage ? 'Add room' : undefined} onAction={() => setAdding(true)} />
       ) : groups.map(group => (
-        <section key={group.id ?? 'all'} className="mb-8">
-          {group.name && <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3">{group.name}</h2>}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {group.rooms.map(r => (
-              <div key={r.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col">
-                <div className="flex items-start justify-between gap-2 mb-3">
-                  <div className="min-w-0">
-                    <p className="font-semibold text-slate-900 text-base">{r.name}</p>
-                    <p className="text-xs text-slate-400">{[r.floor && `Floor ${r.floor}`, r.rent ? `${formatCurrency(r.rent)}/bed` : null].filter(Boolean).join(' · ') || '—'}</p>
+        <section key={group.id ?? 'all'} className="mb-6">
+          {group.name && <h2 className="mb-2 text-sm font-medium text-slate-900">{group.name} <span className="font-normal text-slate-500">· {group.rooms.length} room{group.rooms.length === 1 ? '' : 's'}</span></h2>}
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <table className="hidden w-full text-sm md:table">
+              <thead>
+                <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
+                  <th scope="col" className="py-2.5 pl-4 pr-3 font-medium">Room</th>
+                  <th scope="col" className="px-3 py-2.5 font-medium">Beds</th>
+                  <th scope="col" className="px-3 py-2.5 font-medium">Tenants</th>
+                  <th scope="col" className="whitespace-nowrap px-3 py-2.5 text-right font-medium">Rent / bed</th>
+                  <th scope="col" className="px-3 py-2.5 font-medium">Availability</th>
+                  {canManage && <th scope="col" className="w-10 py-2.5 pl-3 pr-4"><span className="sr-only">Actions</span></th>}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {group.rooms.map(r => (
+                  <tr key={r.id} className="align-top hover:bg-slate-50/70">
+                    <td className="py-2.5 pl-4 pr-3">
+                      <p className="font-medium text-slate-900">{r.name}</p>
+                      <p className="max-w-[220px] truncate text-xs text-slate-500" title={r.notes || undefined}>{[r.floor && `Floor ${r.floor}`, r.notes].filter(Boolean).join(' · ') || '—'}</p>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <div className="flex items-center gap-2.5 pt-1">
+                        <BedDots capacity={r.capacity} occupied={r.occupied} />
+                        <span className="whitespace-nowrap text-xs tabular-nums text-slate-500">{r.occupied}/{r.capacity}</span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5 text-slate-700">
+                      {r.occupants.length ? r.occupants.map(t => t.name).join(', ') : <span className="text-slate-400">Empty</span>}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-right text-slate-600">{r.rent ? formatCurrency(r.rent) : <span className="text-slate-300">—</span>}</td>
+                    <td className="px-3 py-2.5">
+                      {r.free === 0 ? <Badge tone="gray">Full</Badge> : <Badge tone="green">{r.free} free</Badge>}
+                    </td>
+                    {canManage && <td className="py-2 pl-3 pr-4 text-right"><RowMenu items={menuFor(r)} label={`Actions for room ${r.name}`} /></td>}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <ul className="divide-y divide-slate-100 md:hidden">
+              {group.rooms.map(r => (
+                <li key={r.id} className="flex items-start gap-3 px-4 py-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-slate-900">{r.name}</p>
+                      {r.free === 0 ? <Badge tone="gray">Full</Badge> : <Badge tone="green">{r.free} free</Badge>}
+                    </div>
+                    <p className="mt-0.5 truncate text-xs text-slate-500">{r.occupied}/{r.capacity} beds · {r.occupants.length ? r.occupants.map(t => t.name).join(', ') : 'empty'}</p>
                   </div>
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border shrink-0 ${r.free === 0 ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
-                    {r.free === 0 ? 'Full' : `${r.free} free`}
-                  </span>
-                </div>
-                <div className="flex items-center gap-3 mb-3">
-                  <BedDots capacity={r.capacity} occupied={r.occupied} />
-                  <span className="text-xs text-slate-500">{r.occupied}/{r.capacity} beds</span>
-                </div>
-                <ul className="text-sm text-slate-700 space-y-0.5 flex-1">
-                  {r.occupants.length === 0 && <li className="text-slate-400 text-sm">Empty</li>}
-                  {r.occupants.map(t => <li key={t.id} className="truncate">{t.name}</li>)}
-                </ul>
-                {r.notes && <p className="text-xs text-slate-400 mt-2 line-clamp-2">{r.notes}</p>}
-                {canManage && (
-                  <div className="flex gap-2 mt-4 pt-3 border-t border-slate-100">
-                    <button onClick={() => setEditing(r)} className="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-indigo-600 px-2 py-1 rounded-lg hover:bg-slate-50">
-                      <Pencil size={13} /> Edit
-                    </button>
-                    <button onClick={() => setArchiving(r)} disabled={r.occupied > 0} title={r.occupied ? 'Move or vacate tenants first' : 'Archive room'}
-                      className="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-red-600 px-2 py-1 rounded-lg hover:bg-slate-50 disabled:opacity-40 disabled:hover:text-slate-600 disabled:cursor-not-allowed">
-                      <Archive size={13} /> Archive
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
+                  {canManage && <RowMenu items={menuFor(r)} label={`Actions for room ${r.name}`} />}
+                </li>
+              ))}
+            </ul>
           </div>
         </section>
       ))}

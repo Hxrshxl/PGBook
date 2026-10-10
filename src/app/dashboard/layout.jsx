@@ -28,10 +28,10 @@ function DataGate({ children }) {
   if (needed && !can(needed)) {
     return (
       <div className="flex flex-col items-center justify-center text-center py-24 px-6">
-        <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
-          <Lock size={22} className="text-slate-500" />
+        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500">
+          <Lock size={18} strokeWidth={1.75} />
         </div>
-        <h2 className="text-slate-900 font-semibold mb-1">Not available for your role</h2>
+        <h2 className="text-sm font-semibold text-slate-900 mb-1">Not available for your role</h2>
         <p className="text-slate-500 text-sm max-w-sm">As {access?.roleLabel ?? 'a team member'}, you don&apos;t have access to this page. Ask the owner if you need it.</p>
       </div>
     )
@@ -40,12 +40,12 @@ function DataGate({ children }) {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center text-center py-24 px-6">
-        <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center mb-4">
-          <AlertCircle size={22} className="text-red-500" />
+        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-600">
+          <AlertCircle size={18} strokeWidth={1.75} />
         </div>
-        <h2 className="text-slate-900 font-semibold mb-1">Couldn&apos;t load your data</h2>
+        <h2 className="text-sm font-semibold text-slate-900 mb-1">Couldn&apos;t load your data</h2>
         <p className="text-slate-500 text-sm mb-5 max-w-sm">{error}</p>
-        <button onClick={reload} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors">
+        <button onClick={reload} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md bg-indigo-600 font-medium text-white shadow-xs transition-colors hover:bg-indigo-700 disabled:opacity-50">
           <RefreshCw size={14} /> Try again
         </button>
       </div>
@@ -76,7 +76,7 @@ export default function DashboardLayout({ children }) {
     <AppProvider>
       <div className="flex h-screen bg-slate-50 overflow-hidden">
         {/* Desktop sidebar */}
-        <div className="hidden lg:flex lg:w-60 shrink-0">
+        <div className="hidden lg:flex lg:w-[232px] shrink-0">
           <div className="w-full">
             <Sidebar />
           </div>
@@ -85,8 +85,8 @@ export default function DashboardLayout({ children }) {
         {/* Mobile sidebar overlay */}
         {sidebarOpen && (
           <>
-            <div className="fixed inset-0 bg-black/50 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />
-            <div className="fixed inset-y-0 left-0 w-64 z-40 lg:hidden">
+            <div className="fixed inset-0 bg-slate-950/40 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />
+            <div className="fixed inset-y-0 left-0 w-64 z-40 lg:hidden shadow-xl">
               <Sidebar onClose={() => setSidebarOpen(false)} />
             </div>
           </>

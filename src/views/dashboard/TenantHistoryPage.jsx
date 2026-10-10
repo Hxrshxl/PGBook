@@ -1,14 +1,17 @@
 'use client'
 import { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Search, History, ArrowLeft, Phone, Mail } from 'lucide-react'
+import { History, ArrowLeft } from 'lucide-react'
 import { useAppData } from '@/context/AppContext'
 import {
   formatCurrency, formatMonth, formatDate, getTenantPayments, getTotalDue, getBalance, getPaymentEntries,
-  initials, PAYMENT_METHOD_LABELS,
+  PAYMENT_METHOD_LABELS,
 } from '@/utils/helpers'
 import Badge from '@/components/ui/Badge'
 import EmptyState from '@/components/ui/EmptyState'
+import SearchInput from '@/components/ui/SearchInput'
+import StatStrip from '@/components/ui/StatStrip'
+import Panel from '@/components/ui/Panel'
 
 const ID_LABELS = { aadhaar: 'Aadhaar', pan: 'PAN', passport: 'Passport', dl: "Driver's License", voter: 'Voter ID', other: 'ID' }
 
@@ -33,139 +36,120 @@ export default function TenantHistoryPage() {
   const totalPaid = tenantPayments.reduce((s, p) => s + (p.amountPaid ?? 0), 0)
   const totalOutstanding = tenantPayments.reduce((s, p) => s + getBalance(p), 0)
 
+  const th = 'px-3 py-2.5 text-xs font-medium text-slate-500 text-right'
+  const details = shown ? [
+    ['Phone', <a key="p" href={`tel:${shown.phone}`} className="hover:underline">{shown.phone}</a>],
+    shown.email && ['Email', <a key="e" href={`mailto:${shown.email}`} className="hover:underline">{shown.email}</a>],
+    ['Moved in', formatDate(shown.moveInDate)],
+    shown.moveOutDate && ['Moved out', formatDate(shown.moveOutDate)],
+    shown.depositAmount > 0 && ['Deposit', formatCurrency(shown.depositAmount)],
+    shown.idNumber && [ID_LABELS[shown.idType] ?? 'ID', shown.idNumber],
+    shown.emergencyContact?.name && ['Emergency contact', `${shown.emergencyContact.name}${shown.emergencyContact.relation ? ` (${shown.emergencyContact.relation})` : ''}${shown.emergencyContact.phone ? ` · ${shown.emergencyContact.phone}` : ''}`],
+    shown.notes && ['Notes', <span key="n" className="whitespace-pre-wrap">{shown.notes}</span>],
+  ].filter(Boolean) : []
+
   return (
     <div className="flex h-full overflow-hidden">
       {/* Tenant list — full width on mobile until a tenant is chosen */}
-      <div className={`${selected ? 'hidden md:flex' : 'flex'} w-full md:w-72 shrink-0 border-r border-slate-100 bg-white flex-col`}>
-        <div className="p-4 border-b border-slate-100">
-          <h1 className="text-lg font-bold text-slate-900 mb-3">Tenant History</h1>
-          <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="search"
-              aria-label="Search tenants"
-              placeholder="Search tenants…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="w-full border border-slate-200 rounded-xl pl-8 pr-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-400 transition-colors"
-            />
-          </div>
+      <div className={`${selected ? 'hidden md:flex' : 'flex'} w-full shrink-0 flex-col border-r border-slate-200 bg-white md:w-72`}>
+        <div className="border-b border-slate-200 p-4">
+          <h1 className="mb-3 text-base font-semibold text-slate-900">Tenant history</h1>
+          <SearchInput value={search} onChange={setSearch} placeholder="Search tenants" label="Search tenants" className="w-full" />
         </div>
-        <div className="overflow-y-auto flex-1">
-          {filtered.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setChosenId(t.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors border-b border-slate-50 ${shown?.id === t.id ? 'md:bg-indigo-50 md:border-l-2 md:border-l-indigo-500' : 'hover:bg-slate-50'}`}
-            >
-              <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-bold shrink-0">
-                {initials(t.name)}
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-slate-900 truncate">{t.name}</p>
-                <p className="text-xs text-slate-400">Room {t.room}</p>
-              </div>
-              <span className={`ml-auto text-xs font-medium px-1.5 py-0.5 rounded-full shrink-0 ${t.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
-                {t.status === 'active' ? 'Active' : 'Vacated'}
-              </span>
-            </button>
-          ))}
-          {filtered.length === 0 && <p className="text-center text-slate-400 text-sm py-8">{tenants.length ? 'No tenants found' : 'No tenants yet'}</p>}
+        <div className="flex-1 overflow-y-auto p-2">
+          {filtered.map(t => {
+            const active = shown?.id === t.id
+            return (
+              <button
+                key={t.id}
+                onClick={() => setChosenId(t.id)}
+                className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-left transition-colors ${active ? 'md:bg-slate-100' : 'hover:bg-slate-50'}`}
+              >
+                <div className="min-w-0 flex-1">
+                  <p className={`truncate text-sm ${active ? 'font-medium text-slate-900' : 'text-slate-800'}`}>{t.name}</p>
+                  <p className="text-xs text-slate-500">Room {t.room}</p>
+                </div>
+                {t.status !== 'active' && <span className="shrink-0 text-xs text-slate-400">Moved out</span>}
+              </button>
+            )
+          })}
+          {filtered.length === 0 && <p className="py-8 text-center text-sm text-slate-500">{tenants.length ? 'No tenants found' : 'No tenants yet'}</p>}
         </div>
       </div>
 
       {/* Detail panel */}
-      <div className={`${selected ? 'block' : 'hidden md:block'} flex-1 overflow-y-auto bg-slate-50`}>
+      <div className={`${selected ? 'block' : 'hidden md:block'} flex-1 overflow-y-auto`}>
         {!shown ? (
-          <div className="flex items-center justify-center h-full">
+          <div className="flex h-full items-center justify-center p-6">
             <EmptyState icon={History} title="No tenants yet" message="Add tenants to see their payment and complaint history here." />
           </div>
         ) : (
-          <div className="p-4 sm:p-6 max-w-3xl space-y-6">
-            <button onClick={() => setChosenId(null)} className="md:hidden flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700">
+          <div className="max-w-4xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+            <button onClick={() => setChosenId(null)} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 md:hidden">
               <ArrowLeft size={15} /> All tenants
             </button>
 
-            <div className="bg-white rounded-2xl border border-slate-100 p-5 sm:p-6 shadow-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5">
-                <div className="w-14 h-14 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xl font-bold shrink-0">
-                  {initials(shown.name)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h2 className="text-xl font-bold text-slate-900">{shown.name}</h2>
-                    <Badge status={shown.status} />
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-xl font-semibold tracking-tight text-slate-900">{shown.name}</h2>
+                <Badge status={shown.status} />
+              </div>
+              <p className="mt-1 text-sm text-slate-500">Room {shown.room} · {formatCurrency(shown.rentAmount)} a month</p>
+            </div>
+
+            <StatStrip items={[
+              { label: 'Paid, all time', value: formatCurrency(totalPaid) },
+              { label: 'Outstanding', value: totalOutstanding > 0 ? formatCurrency(totalOutstanding) : '—', tone: totalOutstanding > 0 ? 'warning' : 'muted' },
+              { label: 'Months billed', value: tenantPayments.length, sub: `${tenantPayments.filter(p => p.status === 'paid').length} paid in full` },
+              { label: 'Complaints', value: tenantComplaints.length },
+            ]} />
+
+            <Panel title="Details">
+              <dl className="grid grid-cols-1 gap-x-6 sm:grid-cols-2">
+                {details.map(([label, value]) => (
+                  <div key={label} className="flex gap-3 border-b border-slate-100 px-5 py-2.5 text-sm">
+                    <dt className="w-32 shrink-0 text-slate-500">{label}</dt>
+                    <dd className="min-w-0 break-words text-slate-900">{value}</dd>
                   </div>
-                  <p className="text-slate-500 text-sm mt-0.5">Room {shown.room} · {formatCurrency(shown.rentAmount)}/mo{shown.depositAmount > 0 && ` · Deposit ${formatCurrency(shown.depositAmount)}`}</p>
-                  <p className="text-slate-400 text-xs mt-1">
-                    Moved in: {formatDate(shown.moveInDate)}
-                    {shown.moveOutDate && ` · Vacated: ${formatDate(shown.moveOutDate)}`}
-                  </p>
-                </div>
-                <div className="sm:text-right shrink-0">
-                  <p className="text-xl font-bold text-emerald-600">{formatCurrency(totalPaid)}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">Total paid (all time)</p>
-                  {totalOutstanding > 0 && <p className="text-xs font-medium text-amber-600 mt-1">{formatCurrency(totalOutstanding)} outstanding</p>}
-                </div>
-              </div>
+                ))}
+              </dl>
+            </Panel>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 mt-5 pt-5 border-t border-slate-100 text-sm">
-                <a href={`tel:${shown.phone}`} className="flex items-center gap-2 text-slate-600 hover:text-indigo-600"><Phone size={14} /> {shown.phone}</a>
-                {shown.email && <a href={`mailto:${shown.email}`} className="flex items-center gap-2 text-slate-600 hover:text-indigo-600 truncate"><Mail size={14} /> {shown.email}</a>}
-                {shown.idNumber && <p className="text-slate-500">{ID_LABELS[shown.idType] ?? 'ID'}: <span className="text-slate-700">{shown.idNumber}</span></p>}
-                {shown.emergencyContact?.name && (
-                  <p className="text-slate-500">Emergency: <span className="text-slate-700">{shown.emergencyContact.name}{shown.emergencyContact.relation && ` (${shown.emergencyContact.relation})`}{shown.emergencyContact.phone && ` · ${shown.emergencyContact.phone}`}</span></p>
-                )}
-                {shown.notes && <p className="text-slate-500 sm:col-span-2">Notes: <span className="text-slate-700 whitespace-pre-wrap">{shown.notes}</span></p>}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3 sm:gap-4">
-              {[
-                { label: 'Months billed',    value: tenantPayments.length },
-                { label: 'Fully paid',       value: tenantPayments.filter(p => p.status === 'paid').length },
-                { label: 'Complaints filed', value: tenantComplaints.length },
-              ].map(s => (
-                <div key={s.label} className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm text-center">
-                  <p className="text-2xl font-bold text-slate-900">{s.value}</p>
-                  <p className="text-slate-500 text-xs mt-0.5">{s.label}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-              <div className="px-5 py-4 border-b border-slate-100">
-                <h3 className="font-semibold text-slate-900">Payment History</h3>
-              </div>
+            <Panel title="Payments">
               {tenantPayments.length === 0 ? (
-                <p className="text-center text-slate-400 text-sm py-8">No dues recorded yet</p>
+                <p className="py-8 text-center text-sm text-slate-500">No dues recorded yet</p>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm min-w-[620px]">
+                  <table className="w-full min-w-[620px] text-sm">
                     <thead>
-                      <tr className="bg-slate-50 border-b border-slate-100">
-                        {['Month', 'Rent', 'Utility', 'Total', 'Paid', 'Balance', 'Status'].map((h, i) => (
-                          <th key={h} scope="col" className={`px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider ${i === 0 ? 'text-left' : 'text-right'}`}>{h}</th>
-                        ))}
+                      <tr className="border-b border-slate-200">
+                        <th scope="col" className="py-2.5 pl-5 pr-3 text-left text-xs font-medium text-slate-500">Month</th>
+                        <th scope="col" className={th}>Rent</th>
+                        <th scope="col" className={th}>Utilities</th>
+                        <th scope="col" className={th}>Total</th>
+                        <th scope="col" className={th}>Paid</th>
+                        <th scope="col" className={th}>Balance</th>
+                        <th scope="col" className="py-2.5 pl-3 pr-5 text-left text-xs font-medium text-slate-500">Status</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-50">
+                    <tbody className="divide-y divide-slate-100">
                       {tenantPayments.map(p => {
                         const entries = getPaymentEntries(p)
+                        const balance = getBalance(p)
                         return (
-                          <tr key={p.id} className="hover:bg-slate-50/50 transition-colors align-top">
-                            <td className="px-4 py-3">
+                          <tr key={p.id} className="align-top hover:bg-slate-50/70">
+                            <td className="py-2.5 pl-5 pr-3">
                               <p className="font-medium text-slate-900">{formatMonth(p.month)}</p>
                               {entries.map(e => (
-                                <p key={e.id} className="text-xs text-slate-400">{formatDate(e.date)} · {formatCurrency(e.amount)} · {PAYMENT_METHOD_LABELS[e.method] ?? e.method}</p>
+                                <p key={e.id} className="text-xs text-slate-500">{formatDate(e.date)} · {formatCurrency(e.amount)} · {PAYMENT_METHOD_LABELS[e.method] ?? e.method}</p>
                               ))}
                             </td>
-                            <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(p.rentAmount)}</td>
-                            <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(p.utilityShare ?? 0)}</td>
-                            <td className="px-4 py-3 text-right font-semibold text-slate-900">{formatCurrency(getTotalDue(p))}</td>
-                            <td className="px-4 py-3 text-right text-emerald-600 font-medium">{formatCurrency(p.amountPaid ?? 0)}</td>
-                            <td className="px-4 py-3 text-right text-amber-600">{formatCurrency(getBalance(p))}</td>
-                            <td className="px-4 py-3 text-right"><Badge status={p.status} /></td>
+                            <td className="px-3 py-2.5 text-right tabular-nums text-slate-600">{formatCurrency(p.rentAmount)}</td>
+                            <td className="px-3 py-2.5 text-right tabular-nums text-slate-600">{p.utilityShare ? formatCurrency(p.utilityShare) : <span className="text-slate-300">—</span>}</td>
+                            <td className="px-3 py-2.5 text-right font-medium tabular-nums text-slate-900">{formatCurrency(getTotalDue(p))}</td>
+                            <td className="px-3 py-2.5 text-right tabular-nums text-slate-600">{formatCurrency(p.amountPaid ?? 0)}</td>
+                            <td className="px-3 py-2.5 text-right tabular-nums text-slate-900">{balance > 0 ? formatCurrency(balance) : <span className="text-slate-300">—</span>}</td>
+                            <td className="py-2.5 pl-3 pr-5"><Badge status={p.status} /></td>
                           </tr>
                         )
                       })}
@@ -173,28 +157,22 @@ export default function TenantHistoryPage() {
                   </table>
                 </div>
               )}
-            </div>
+            </Panel>
 
             {tenantComplaints.length > 0 && (
-              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                <div className="px-5 py-4 border-b border-slate-100">
-                  <h3 className="font-semibold text-slate-900">Complaint History</h3>
-                </div>
-                <div className="divide-y divide-slate-50">
+              <Panel title="Complaints">
+                <ul className="divide-y divide-slate-100">
                   {tenantComplaints.map(c => (
-                    <div key={c.id} className="px-5 py-4 flex items-start justify-between gap-3">
+                    <li key={c.id} className="flex items-start justify-between gap-3 px-5 py-3">
                       <div className="min-w-0">
-                        <p className="text-sm text-slate-900 break-words">{c.description}</p>
-                        <p className="text-xs text-slate-400 mt-1 capitalize">{c.category} · {formatDate(c.createdAt)}</p>
+                        <p className="break-words text-sm text-slate-900">{c.description}</p>
+                        <p className="mt-0.5 text-xs capitalize text-slate-500">{c.category} · {formatDate(c.createdAt)}</p>
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <Badge status={c.priority} />
-                        <Badge status={c.status} />
-                      </div>
-                    </div>
+                      <Badge status={c.status} />
+                    </li>
                   ))}
-                </div>
-              </div>
+                </ul>
+              </Panel>
             )}
           </div>
         )}

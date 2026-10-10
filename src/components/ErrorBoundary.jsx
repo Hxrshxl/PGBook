@@ -16,8 +16,7 @@ export default class ErrorBoundary extends Component {
       return (
         <div className="min-h-screen flex items-center justify-center p-8 text-center">
           <div>
-            <p className="text-5xl mb-4">💥</p>
-            <h1 className="text-xl font-bold text-slate-900 mb-2" style={{ fontFamily: 'Space Grotesk' }}>
+            <h1 className="text-xl font-semibold text-slate-900 mb-2">
               Something went wrong
             </h1>
             <p className="text-slate-500 text-sm mb-6 max-w-sm mx-auto">
@@ -25,7 +24,7 @@ export default class ErrorBoundary extends Component {
             </p>
             <button
               onClick={() => window.location.reload()}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors"
+              className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md bg-indigo-600 font-medium text-white shadow-xs transition-colors hover:bg-indigo-700 disabled:opacity-50"
             >
               Reload app
             </button>

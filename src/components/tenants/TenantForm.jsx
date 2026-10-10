@@ -87,8 +87,8 @@ export default function TenantForm({ initialData, onSubmit, onCancel }) {
     })
   }
 
-  const inputCls = 'w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors'
-  const labelCls = 'block text-slate-700 text-sm font-medium mb-1.5'
+  const inputCls = 'w-full border border-slate-200 rounded-md px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 transition-colors bg-white'
+  const labelCls = 'block text-[13px] font-medium text-slate-700 mb-1.5'
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
@@ -136,7 +136,7 @@ export default function TenantForm({ initialData, onSubmit, onCancel }) {
               placeholder="A-204" className={`${inputCls} ${roomOptions.length ? 'mt-2' : ''}`} />
           )}
           {form.roomId === NEW_ROOM || roomOptions.length === 0
-            ? <p className="text-xs text-slate-400 mt-1">A new room is created with 1 bed. Change its beds in Rooms & Beds.</p>
+            ? <p className="text-xs text-slate-400 mt-1">A new room is created with 1 bed. You can change its beds on the Rooms page.</p>
             : chosenRoom?.rent > 0 && <p className="text-xs text-slate-400 mt-1">Room rent: {formatCurrency(chosenRoom.rent)} per bed</p>}
         </div>
       </div>
@@ -214,10 +214,10 @@ export default function TenantForm({ initialData, onSubmit, onCancel }) {
       <FormError message={error} />
 
       <div className="flex items-center justify-end gap-3 pt-2">
-        <button type="button" onClick={onCancel} disabled={busy} className="px-5 py-2.5 text-sm font-medium text-slate-600 border border-slate-200 rounded-xl hover:border-slate-300 transition-colors disabled:opacity-50">
+        <button type="button" onClick={onCancel} disabled={busy} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md border border-slate-200 bg-white font-medium text-slate-700 shadow-xs transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50">
           Cancel
         </button>
-        <button type="submit" disabled={busy} className="px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition-colors disabled:opacity-60">
+        <button type="submit" disabled={busy} className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap h-9 px-3.5 text-sm rounded-md bg-indigo-600 font-medium text-white shadow-xs transition-colors hover:bg-indigo-700 disabled:opacity-50">
           {busy ? 'Saving…' : initialData ? 'Save changes' : 'Add tenant'}
         </button>
       </div>
